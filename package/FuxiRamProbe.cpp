@@ -22,6 +22,11 @@
 
 namespace {
 
+// The kernel's physical memory base, declared the same way NativeRamBlock.cpp does (it is an XNU global,
+// not declared by any header this file includes). The window check compares it against the descriptor's
+// 64-bit window base; unsigned long is 64-bit on arm64, so no sign/size mismatch.
+extern unsigned long gPhysBase, gPhysSize;
+
 // The handoff layout, mirroring UniXNURamObjects.h of the firmware handoff protocol (the kernel build has no
 // access to the UEFI package): a 12 GiB window whose front 512 MiB hold the kernel and boot data.
 constexpr uint64_t kWindowBytes = 0x300000000ULL;          // 12 GiB
