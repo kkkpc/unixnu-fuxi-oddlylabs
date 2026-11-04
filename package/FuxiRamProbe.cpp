@@ -20,12 +20,16 @@
 #include <pexpert/pexpert.h>
 #include <string.h>
 
-namespace {
-
-// The kernel's physical memory base, declared the same way NativeRamBlock.cpp does (it is an XNU global,
-// not declared by any header this file includes). The window check compares it against the descriptor's
-// 64-bit window base; unsigned long is 64-bit on arm64, so no sign/size mismatch.
+// The kernel's physical memory base, declared the way NativeRamBlock.cpp does: at file scope inside
+// extern "C". It must NOT sit inside the anonymous namespace below: a name declared there has internal
+// linkage, so the reference can never resolve to XNU's _gPhysBase (Build #5 failed at link with exactly
+// that undefined symbol). unsigned long is 64-bit on arm64, so the window comparison has no sign/size
+// mismatch.
+extern "C" {
 extern unsigned long gPhysBase, gPhysSize;
+}
+
+namespace {
 
 // The handoff layout, mirroring UniXNURamObjects.h of the firmware handoff protocol (the kernel build has no
 // access to the UEFI package): a 12 GiB window whose front 512 MiB hold the kernel and boot data.
