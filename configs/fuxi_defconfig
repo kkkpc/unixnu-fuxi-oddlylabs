@@ -8,14 +8,15 @@ CONFIG_XNU_ARMCPU=y
 CONFIG_XNU_CRYPTO_BOOTSTRAP="prelinked"
 # Native UFS root (UniXNU ShengUfs, the SM8550 UFS transport): the full OS lives in the
 # userdata reserve and is mounted read-only as root, as on UniXNU-sheng's iPadOS 17 profile.
-# The verified-root probe lines follow sheng_defconfig; the archive path is the build tree's
-# VerifiedRoot bundle, as there.
+# The owner-root chain (VERIFIED_ROOT_PROBE / OWNER_ROOT_AUDIT / OWNER_ROOT_TRUST, as in
+# sheng_defconfig) is deliberately OFF for the first boot: its probe archive is signed out
+# of a board-specific owner-policy pipeline (frozen to sheng's root UUID, image digests and
+# macOS hdiutil state) that has no fuxi counterpart yet, and Build #11 failed on the missing
+# archive. First boot relies on the driver's own SHNGROOT manifest hash verification; the
+# trust chain is ported as its own step once the root boots. VIRTIO_BLOCK stays on: ShengUfs
+# declares VirtioMmioBlock as a component dependency.
 CONFIG_XNU_NATIVE_UFS=y
 CONFIG_XNU_NATIVE_VIRTIO_BLOCK=y
-CONFIG_XNU_VERIFIED_ROOT_PROBE=y
-CONFIG_XNU_OWNER_ROOT_AUDIT=y
-CONFIG_XNU_OWNER_ROOT_TRUST=y
-CONFIG_XNU_VERIFIED_ROOT_ARCHIVE="{tree}/build/verified-root-os-xnu-bundle/libVerifiedRootProbe.a"
 # The SoC fragment enables the Adreno driver; it is not selected for fuxi yet.
 # CONFIG_XNU_NATIVE_ADRENO is not set
 # Without this the BCM2837 target maps PLATFORM_PANIC_LOG_PADDR (0x3c0fc000, RAM on a Raspberry Pi 3) in PE_create_console,
