@@ -3,9 +3,12 @@
 """Build build/sheng-ufs/libShengUfs.a: the ShengUfs UFS root driver for fuxi, device-side.
 
 The sources in package/ufs/ (linked into the build tree as kits/fuxi/ufs/, like every
-device package source) are unmodified copies of UniXNU/ShengUfs (driver files unchanged
-since 99d8bcd; copied from the af14068 tree, BSD-2-Clause, see the LICENSE file beside
-them). They are built here instead of through the catalog component for one reason:
+device package source) are copies of UniXNU/ShengUfs (driver files unchanged since
+99d8bcd; copied from the af14068 tree, BSD-2-Clause, see the LICENSE file beside them),
+with one fuxi patch in NativeUfs.cpp: the read-path timing calls use timerTicks and
+native_ufs_read_ticks outside the NATIVE_VERIFIED_BLOCK region that defines them, which
+only the verified configuration upstream builds ever compiles; the calls are gated the
+same way so the file also compiles without the define (Build #14 errors). They are built here instead of through the catalog component for one reason:
 UniXNU's build-arm-driver.py compiles NativeUfs.cpp unconditionally with
 -DNATIVE_VERIFIED_BLOCK=1, and the policy data that mode references
 (verified_root_policies / verified_root_key / verified_root_policy_count) is generated only
