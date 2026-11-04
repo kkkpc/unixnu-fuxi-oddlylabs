@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BSD-2-Clause-Patent
 // The RAM system probe: with ram-system-probe=1 it checks, in its own kernel thread, what the firmware's USB receiver
-// handed over through DarwinBoot. DarwinBoot adopts the receiver's 12 GiB window as the boot window when the payload
-// asks (the RamSystemObjects placeholder in /chosen/memory-map) and writes the live handoff descriptor into it: two
-// objects, the OS container at window + 512 MiB and the SystemOS container 2 MiB-aligned behind it, each with the
-// SHA-256 the receiver verified during the transfer. The probe re-validates the descriptor against the pinned layout
-// and digests of the iPadOS 17.7.11 (21H461) cryptex containers and re-hashes both objects in the kernel's own
-// mapping, then reports one row (fuxi_ram_row) at the end of the touch probe's panic message: RAMSYS win <base> os
-// <OK|BAD|..> sys <OK|BAD|..>, or RAMSYS none / RAMSYS invalid when there is nothing sound to report. It publishes
-// nothing and mounts nothing; the publication driver is a separate step that starts from this proof.
+// handed over through DarwinBoot. The receiver allocates the two containers as independent EfiLoaderData allocations
+// (handoff v2: no single window — the fuxi memory map cannot give one contiguous span large enough) and publishes
+// their addresses, sizes and SHA-256 digests through the UniXNURamObjects protocol; DarwinBoot validates and
+// re-hashes them and writes the live descriptor into the RamSystemObjects property of /chosen/memory-map. The
+// objects sit outside the kernel's boot window, in RAM the kernel never owns. The probe re-validates the descriptor
+// against the pinned sizes and digests of the iPadOS 17.7.11 (21H461) cryptex containers and re-hashes both objects
+// in the kernel's own mapping, then reports one row (fuxi_ram_row) at the end of the touch probe's panic message:
+// RAMSYS os@<base> <OK|BAD|..> sys@<base> <OK|BAD|..>, or RAMSYS none / RAMSYS invalid when there is nothing sound
+// to report. It publishes nothing and mounts nothing; the publication driver is a separate step that starts from
+// this proof.
 #include <IOKit/IOService.h>
 #include <IOKit/IOLib.h>
 #include <IOKit/IODeviceTreeSupport.h>
@@ -20,24 +22,12 @@
 #include <pexpert/pexpert.h>
 #include <string.h>
 
-// The kernel's physical memory base, declared the way NativeRamBlock.cpp does: at file scope inside
-// extern "C". It must NOT sit inside the anonymous namespace below: a name declared there has internal
-// linkage, so the reference can never resolve to XNU's _gPhysBase (Build #5 failed at link with exactly
-// that undefined symbol). unsigned long is 64-bit on arm64, so the window comparison has no sign/size
-// mismatch.
-extern "C" {
-extern unsigned long gPhysBase, gPhysSize;
-}
-
 namespace {
 
 // The handoff layout, mirroring UniXNURamObjects.h of the firmware handoff protocol (the kernel build has no
-// access to the UEFI package): a 12 GiB window whose front 512 MiB hold the kernel and boot data.
-constexpr uint64_t kWindowBytes = 0x300000000ULL;          // 12 GiB
-constexpr uint64_t kFrontBytes = 0x20000000ULL;            // 512 MiB
+// access to the UEFI package): version 2, each object an independent allocation described by its own address.
 constexpr uint64_t kOsBytes = 6077580800ULL;               // 044-76040-038.dmg, LZFSE-decoded
 constexpr uint64_t kSystemBytes = 3303014400ULL;           // 044-76034-038.dmg, raw APFS
-constexpr uint64_t kSystemOffset = kFrontBytes + ((kOsBytes + 0x1FFFFFULL) & ~0x1FFFFFULL);
 constexpr uint8_t kOsDigest[32] = {
     0xe5, 0x63, 0x4d, 0x04, 0xa8, 0xac, 0x35, 0xf0, 0x24, 0x84, 0x5f, 0x58, 0x33, 0x94, 0xe0, 0xa3,
     0x5d, 0xeb, 0x26, 0xa0, 0x4c, 0xb0, 0xc0, 0x02, 0x86, 0xa8, 0x67, 0x4e, 0x25, 0xa9, 0xa4, 0xf2};
@@ -61,7 +51,7 @@ static_assert(sizeof(RamHandoff) == 136, "the ADT placeholder and the firmware d
 int gState = 0;
 int gPhase = 0;
 int gObject[2] = {0, 0};
-uint64_t gWindow = 0;
+uint64_t gBase[2] = {0, 0};
 
 bool hashEquals(uint64_t physical, uint64_t bytes, const uint8_t expected[32]) {
     const uint8_t *cursor = reinterpret_cast<const uint8_t *>(ml_static_ptovirt(static_cast<vm_offset_t>(physical)));
@@ -108,19 +98,22 @@ void ramThread(void *, wait_result_t) {
         gPhase = 2;
         return;
     }
-    // The adopted boot window is the kernel's own physical base (DarwinBoot loads the kernel at the window base),
-    // and the objects sit at the pinned offsets behind the front reserve.
-    if (handoff.version != 1 || handoff.bytes != sizeof handoff || handoff.flags != 3 ||
-        handoff.windowBytes != kWindowBytes || handoff.window != gPhysBase ||
-        handoff.object[0].address != handoff.window + kFrontBytes || handoff.object[0].bytes != kOsBytes ||
-        handoff.object[1].address != handoff.window + kSystemOffset || handoff.object[1].bytes != kSystemBytes ||
+    // Handoff v2: no window. Each object stands on its own allocation: pinned size and digest, a nonzero
+    // page-aligned base, and the two ranges must not overlap.
+    const uint64_t osBase = handoff.object[0].address, sysBase = handoff.object[1].address;
+    bool overlap = osBase < sysBase ? (osBase + kOsBytes > sysBase) : (sysBase + kSystemBytes > osBase);
+    if (handoff.version != 2 || handoff.bytes != sizeof handoff || handoff.flags != 3 ||
+        handoff.window != 0 || handoff.windowBytes != 0 ||
+        handoff.object[0].bytes != kOsBytes || handoff.object[1].bytes != kSystemBytes ||
+        osBase == 0 || (osBase & 0xFFF) != 0 || sysBase == 0 || (sysBase & 0xFFF) != 0 || overlap ||
         memcmp(handoff.object[0].sha256, kOsDigest, 32) != 0 ||
         memcmp(handoff.object[1].sha256, kSystemDigest, 32) != 0) {
         gState = 2;
         gPhase = 2;
         return;
     }
-    gWindow = handoff.window;
+    gBase[0] = osBase;
+    gBase[1] = sysBase;
     gPhase = 1;
     gObject[0] = hashEquals(handoff.object[0].address, handoff.object[0].bytes, kOsDigest) ? 1 : 2;
     gObject[1] = hashEquals(handoff.object[1].address, handoff.object[1].bytes, kSystemDigest) ? 1 : 2;
@@ -141,13 +134,13 @@ extern "C" void fuxi_ram_probe_start(void) {
 }
 
 extern "C" const char *fuxi_ram_row(char *out, size_t size) {
-    if (!out || size < 48 || gPhase == 0) return "";
+    if (!out || size < 56 || gPhase == 0) return "";
     if (gState == 1) {
         snprintf(out, size, "\nRAMSYS none");
     } else if (gState == 2) {
         snprintf(out, size, "\nRAMSYS invalid");
     } else {
-        snprintf(out, size, "\nRAMSYS win %llx os %s sys %s", gWindow, token(gObject[0]), token(gObject[1]));
+        snprintf(out, size, "\nRAMSYS os@%llx %s sys@%llx %s", gBase[0], token(gObject[0]), gBase[1], token(gObject[1]));
     }
     return out;
 }
