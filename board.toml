@@ -27,12 +27,12 @@ lba_bytes = 4096
 
 [components]
 # The template set, plus the GENI SPI engine and the FTM5 protocol of the touch controller.
-# ShengUfs (SM8550 UFS transport) and VerifiedRoot join for the native UFS root, as in
-# UniXNU-sheng's iPadOS 17 component set. VirtioMmioBlock joins for the same set: the
-# owner-root trust guard in UniXNU's kernel build script accepts the root only with a
-# virtio block or source-storage binding, and sheng's iPadOS 17 defconfig satisfies it
-# with CONFIG_XNU_NATIVE_VIRTIO_BLOCK=y (Build #10 failed on this guard without it).
-include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch", "ShengUfs", "VerifiedRoot", "VirtioMmioBlock"]
+# The native UFS root driver is not a selected component: the catalog ShengUfs build
+# compiles NativeUfs.cpp unconditionally with the verified-block define, whose policy
+# data only the sheng-frozen owner-policy pipeline generates. The driver is vendored in
+# kits/fuxi/ufs/ and built by scripts/build-fuxi-ufs.py without that define (owner
+# decision 2026-11-04: first boot without the owner-root trust chain).
+include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch"]
 
 [kernel]
 defconfig = "fuxi_defconfig"
@@ -52,12 +52,11 @@ archives = [
   "component:SoftwareAES",
   "build-software-aes-bindings.py",
   "build-libpthread-kernel.py",
-  "component:ShengUfs",
-  "component:VirtioMmioBlock",
   "build-mockfs-fixture.py",
   "build-fuxi-platform-power.py",
   "build-fuxi-hid-input.py",
   "build-fuxi-ram-block.py",
+  "build-fuxi-ufs.py",
   "build-fuxi-touch.py",
 ]
 

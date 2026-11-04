@@ -13,10 +13,12 @@ CONFIG_XNU_CRYPTO_BOOTSTRAP="prelinked"
 # of a board-specific owner-policy pipeline (frozen to sheng's root UUID, image digests and
 # macOS hdiutil state) that has no fuxi counterpart yet, and Build #11 failed on the missing
 # archive. First boot relies on the driver's own SHNGROOT manifest hash verification; the
-# trust chain is ported as its own step once the root boots. VIRTIO_BLOCK stays on: ShengUfs
-# declares VirtioMmioBlock as a component dependency.
+# trust chain is ported as its own step once the root boots. The driver itself is vendored
+# in kits/fuxi/ufs/ and built by scripts/build-fuxi-ufs.py without the verified-block
+# define (the catalog component build sets it unconditionally). VIRTIO_BLOCK is off too:
+# its only roles were the trust guard above and a bindings audit against the RAM
+# transport, both part of the deferred machinery (Build #12 failed on that audit).
 CONFIG_XNU_NATIVE_UFS=y
-CONFIG_XNU_NATIVE_VIRTIO_BLOCK=y
 # The SoC fragment enables the Adreno driver; it is not selected for fuxi yet.
 # CONFIG_XNU_NATIVE_ADRENO is not set
 # Without this the BCM2837 target maps PLATFORM_PANIC_LOG_PADDR (0x3c0fc000, RAM on a Raspberry Pi 3) in PE_create_console,
