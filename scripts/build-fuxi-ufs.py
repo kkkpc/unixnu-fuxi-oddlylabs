@@ -29,8 +29,10 @@ and build-xnu-4k-baseline.sh force-loads this archive from its fixed path.
 
 The compile replays the IOPlatformExpert compile record with the storage headers that
 prepare-storage-headers.py leaves in build/storage-abi/include, exactly like
-build-fuxi-ram-block.py, and binds NativeUfsBlock's IOBlockStorageDevice imports to the
-kernelcache addresses in scripts/fuxi_storage_abi.py the same way.
+build-fuxi-ram-block.py, and audits NativeUfsBlock's IOBlockStorageDevice imports
+against the kernelcache addresses in scripts/fuxi_storage_abi.py the same way. The
+alias definitions themselves are emitted once per kernel, by the RAM block build:
+defining them here too gave duplicate symbols at the kernel link (Build #28).
 """
 import hashlib
 import json
@@ -136,13 +138,16 @@ for name in undefined - set(bindings):
     require(name in BINDINGS, f'Unqualified original storage import {name}')
     bindings[name] = BINDINGS[name]
 require(undefined == set(bindings), 'All and only actual original storage imports bound')
-asm = OUT / 'original-bindings.S'
-asm.write_text(''.join(f'.globl {name}\n.set {name}, {va:#x}\n' for name, va in sorted(bindings.items())))
-sdk = run(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], text=True).strip()
-run(['xcrun', 'clang', '-target', 'arm64-apple-ios17.0', '-isysroot', sdk, '-c', asm, '-o', OUT / 'original-bindings.o'])
+# The original IOBlockStorageDevice aliases are defined exactly once per kernel, by
+# build-fuxi-ram-block.py's original-bindings.o (the same addresses, from
+# scripts/fuxi_storage_abi.py; the kernel build script states the same one-alias
+# rule for the virtio transport). Defining them here as well gave 17 duplicate
+# symbols at the kernel link in Build #28, so this archive carries only the driver
+# object and NativeUfs.o's audited imports resolve against the RAM block's aliases.
+# The audited set is still recorded in bindings.json below.
 archive = OUT / 'libShengUfs.a'
 archive.unlink(missing_ok=True)
-run(['xcrun', 'ar', 'rcs', archive, obj, OUT / 'original-bindings.o'])
+run(['xcrun', 'ar', 'rcs', archive, obj])
 report = {'source': 'kits/fuxi/ufs/NativeUfs.cpp', 'verified_block': False,
           'compiled_object_sha256': hashlib.sha256(raw).hexdigest(),
           'original_slots': len(entries), 'owned_slots': owned,

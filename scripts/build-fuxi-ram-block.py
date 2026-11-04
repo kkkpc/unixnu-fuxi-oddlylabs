@@ -13,8 +13,10 @@ reads build/storage-abi/interface-audit.json, the audit of an earlier research b
 script compiles the source with the same flags (the compile record of IOPlatformExpert.cpp and the storage headers that
 prepare-storage-headers.py leaves in build/storage-abi/include), applies the same vtable rules, and binds the
 IOBlockStorageDevice imports to the kernelcache addresses in scripts/fuxi_storage_abi.py. ci/check-ram-block-bindings.py
-checks those addresses and NativeRamBlock's vtable in the kernel that ships. kits/fuxi/FuxiRamBlockStore.cpp defines the
-persistent-store hooks NativeRamBlock imports weakly: fuxi has no store, so the disk stays in RAM.
+checks those addresses and NativeRamBlock's vtable in the kernel that ships. The persistent-store hooks
+NativeRamBlock imports weakly (native_ufs_store_*) are provided by the ShengUfs driver itself, as on sheng;
+kits/fuxi/FuxiRamBlockStore.cpp held no-store stubs for them until the driver joined the link (Build #28)
+and is now an empty translation unit kept so this build's file list is unchanged.
 """
 import json
 from pathlib import Path
