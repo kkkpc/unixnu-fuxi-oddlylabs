@@ -2342,7 +2342,14 @@ bool NativeUfs::startRoot (IOService *provider)
       }
       return true;
 #else
-      return false; // Root publication requires owner verification in every build.
+      // fuxi patch: upstream fails closed here ("Root publication requires owner
+      // verification in every build"), which in the unverified configuration this
+      // board builds would publish nothing at all. The owner dropped the
+      // owner-root chain for the first UFS boot (2026-11-04), so publish the
+      // windows prepare() configured; OS/SystemOS distinctness is already
+      // enforced by ufsBuildRootPlan, and reads carry no per-block verification
+      // in this mode (see NativeUfsBlock::configure).
+      return true;
 #endif
     }
     bool schedule () {
