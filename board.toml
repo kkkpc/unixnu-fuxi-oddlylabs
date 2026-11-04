@@ -12,9 +12,24 @@ os_profile = "ipados-17.7.11-21H461"
 description = "Xiaomi 13"
 kit = "fuxi"
 
+# The userdata partition on LUN 0 (4096-byte LBAs), where the ShengUfs root image lives.
+# GPT-verified 2026-11-04 against the official fastboot ROM OS3.0.308.0.WMCCNXM's
+# gpt_main0.bin: userdata is the last partition (index 31), first LBA 3110976 (0x2F7840);
+# its GPT entry carries the Qualcomm grow sentinel (last = first - 1), so the end comes
+# from the owner's unit itself: fastboot getvar partition-size:userdata = 0x3804BBB
+# sectors (2026-11-01), giving last = 3110976 + 0x3804BBB - 1 = 61850618 (0x3AFC3FA).
+# (Earlier prep notes rendered the two hex values as wrong decimals 3112544 / 61845754;
+# the hex span was always the consistent one. Values below are the verified decimals.)
+[userdata]
+first_lba = 3110976
+last_lba = 61850618
+lba_bytes = 4096
+
 [components]
 # The template set, plus the GENI SPI engine and the FTM5 protocol of the touch controller.
-include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch"]
+# ShengUfs (SM8550 UFS transport) and VerifiedRoot join for the native UFS root, as in
+# UniXNU-sheng's iPadOS 17 component set.
+include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch", "ShengUfs", "VerifiedRoot"]
 
 [kernel]
 defconfig = "fuxi_defconfig"
@@ -34,6 +49,7 @@ archives = [
   "component:SoftwareAES",
   "build-software-aes-bindings.py",
   "build-libpthread-kernel.py",
+  "component:ShengUfs",
   "build-mockfs-fixture.py",
   "build-fuxi-platform-power.py",
   "build-fuxi-hid-input.py",
@@ -96,8 +112,10 @@ panic_screen = true
 # starts the HID device that turns its contacts into reports (kits/fuxi/FuxiHidProbe.cpp; sheng-touch-hid=1 gives that device
 # its digitizer collection), and fuxi-touch-panic=2 panics with the probe's rows after the first lift, so the result can be
 # read from the panic screen. Without a touch the boot ends in the root device wait.
+# native-ufs-root=1 selects the ShengUfs root in the userdata reserve (the full OS, flashed
+# once) over the RAM-disk root; the touch probe's SYS row then reports the UFS root.
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1",
-               "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "fuxi-touch-panic=2"]
+               "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "fuxi-touch-panic=2", "native-ufs-root=1"]
 
 [payload.adt]
 # Supply the board's identity seed through --unique-chip-id.
