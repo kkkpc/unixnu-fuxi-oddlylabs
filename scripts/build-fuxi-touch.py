@@ -58,7 +58,8 @@ def main():
     includes = ['-I', KIT, '-I', ROOT / 'drivers/FuxiFtsTouch', '-I', ROOT / 'drivers/QcomGeniSpi']
     jobs = [(cxx, KIT / 'FuxiTouchProbe.cpp', CXX_FLAGS + osfmk + includes),
             (cxx, KIT / 'FuxiHidProbe.cpp', CXX_FLAGS + osfmk + includes),
-            (cxx, KIT / 'FuxiSysProbe.cpp', CXX_FLAGS + osfmk + includes)]
+            (cxx, KIT / 'FuxiSysProbe.cpp', CXX_FLAGS + osfmk + includes),
+            (cxx, KIT / 'FuxiRamProbe.cpp', CXX_FLAGS + osfmk + includes)]
     for source in (ROOT / 'drivers/FuxiFtsTouch/FtsProtocol.c', ROOT / 'drivers/FuxiFtsTouch/FtsTouchCore.c',
                    ROOT / 'drivers/QcomGeniSpi/GeniSpi.c', KIT / 'QcomRpmh.c'):
         jobs.append((c, source, C_FLAGS + osfmk))

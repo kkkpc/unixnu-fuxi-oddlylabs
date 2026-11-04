@@ -1,0 +1,15 @@
+diff --git a/bsd/kern/bsd_init.c b/bsd/kern/bsd_init.c
+--- a/bsd/kern/bsd_init.c
++++ b/bsd/kern/bsd_init.c
+@@ -795,6 +795,12 @@ bsd_init(void)
+ 	extern void native_touch_probe(void);
+ 	native_touch_probe();
++
++	/* fuxi (Xiaomi 13): RAM system handoff verification, off unless the boot argument ram-system-probe is set.
++	 * It runs in its own kernel thread (package/FuxiRamProbe.cpp of the fuxi device repository) and reports
++	 * through the touch probe's panic message (the RAMSYS row). */
++	extern void fuxi_ram_probe_start(void);
++	fuxi_ram_probe_start();
+ #endif
+ 
+ 	/* Initialize the file systems. */

@@ -464,6 +464,11 @@ static const char *hidText() {return gHidRequested ? fuxi_hid_row(gHidText, size
 // How far the system got (FuxiSysProbe.cpp): the root filesystem and the first processes; empty before the root is mounted.
 extern "C" const char *fuxi_sys_row(char *out, size_t size);
 static char gSysText[192];
+// The RAM system handoff (FuxiRamProbe.cpp): the firmware receiver's two objects, re-hashed in the kernel; the row is
+// empty unless ram-system-probe=1 was given.
+extern "C" const char *fuxi_ram_row(char *out, size_t size);
+static char gRamText[96];
+static const char *ramText() {return fuxi_ram_row(gRamText, sizeof gRamText);}
 
 // Refreshes the diagnostic rows and prints them to the kernel log.
 static void report(const Session &s) {
@@ -585,9 +590,9 @@ static void touchThread(void *, wait_result_t) {
     } while (0);
     report(*s);
     if (panicReport) {
-        panic("fuxi-touch report (stage %u of %u)\n%s\n%s\n%s\n%s%s%s%s", native_touch_stage_done, native_touch_stage_req,
+        panic("fuxi-touch report (stage %u of %u)\n%s\n%s\n%s\n%s%s%s%s%s", native_touch_stage_done, native_touch_stage_req,
               native_touch_rows[0], native_touch_rows[1], native_touch_rows[2], native_touch_rows[3], smpText(), hidText(),
-              fuxi_sys_row(gSysText, sizeof gSysText));
+              fuxi_sys_row(gSysText, sizeof gSysText), ramText());
     }
 }
 
