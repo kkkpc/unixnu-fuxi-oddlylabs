@@ -126,3 +126,4 @@ chip_id = "207"
 unique_chip_id = "required"
 # Memory DarwinBoot gives XNU, as mouse233's fuxi RAM-root port uses it (verified there on this phone model).
 owned_memory_size = "0x130000000"
+root_match_volume_uuid = "10F30600-0000-0000-0476-9D262CA04825"

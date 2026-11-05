@@ -5,15 +5,21 @@
 The sources in package/ufs/ (linked into the build tree as kits/fuxi/ufs/, like every
 device package source) are copies of UniXNU/ShengUfs (driver files unchanged since
 99d8bcd; copied from the af14068 tree, BSD-2-Clause, see the LICENSE file beside them),
-with two fuxi patches in NativeUfs.cpp: the read-path timing calls use timerTicks and
+with three fuxi patches in NativeUfs.cpp: the read-path timing calls use timerTicks and
 native_ufs_read_ticks outside the NATIVE_VERIFIED_BLOCK region that defines them, which
 only the verified configuration upstream builds ever compiles, so the calls are gated the
-same way (Build #14 errors); and startRoot's identity validation returns false
+same way (Build #14 errors); startRoot's identity validation returns false
 unconditionally without the define ("Root publication requires owner verification in
 every build"), which would publish nothing at all in this configuration, so its
 unverified branch returns true instead — window distinctness is already enforced by
 ufsBuildRootPlan, and per-block verification is what the dropped owner-root chain would
-have added (owner decision, 2026-11-04). They are built here instead of through the catalog component for one reason:
+have added (owner decision, 2026-11-04); and the publisher's per-window media wait
+matches IOMedia by the signed volume UUID that only the verified branch of validate()
+fills, so without the define the wait could never succeed and publication timed out at
+the first window (SystemOS), discarding the OS window unstarted (device, 2026-11-05:
+the rootmatch boot's "Failed to mount root device"), so with an empty UUID the wait
+falls back to ancestry alone — any IOMedia whose ancestor chain reaches the window
+counts as its published media, and verified builds are unchanged. They are built here instead of through the catalog component for one reason:
 UniXNU's build-arm-driver.py compiles NativeUfs.cpp unconditionally with
 -DNATIVE_VERIFIED_BLOCK=1, and the policy data that mode references
 (verified_root_policies / verified_root_key / verified_root_policy_count) is generated only
