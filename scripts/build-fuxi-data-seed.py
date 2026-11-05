@@ -34,6 +34,19 @@ nothing about it is trusted, it is only found. The board's persistent store
 stays off (package/FuxiRamBlockStore.cpp answers the store hooks with no
 store), so the Data volume is per-boot ephemeral: writes live in RAM only.
 The OS image is an input only; it is attached read-only and never modified.
+
+The same patch pass also normalizes the volume's incompatible-feature word.
+A macOS 26 newfs_apfs volume declares APFS_INCOMPAT_CASE_INSENSITIVE (0x1)
+alone; both IPSW volumes of this OS declare APFS_INCOMPAT_NORMALIZATION_
+INSENSITIVE (0x8) and neither declares 0x1 (SystemOS 0x28, System 0x8) - no
+Apple-shipped volume uses the 0x1-only combination. The chain47 device boot
+(2026-11-06) hung with a permanently black screen inside the scratch Data
+mount's synchronous APFS mount() call - the only no-timeout call in the Data
+path (the seed lookup, the boot-manifest publish and every glue failure were
+audited to fail loudly onto a panic page, and the sibling chain46 image
+booted normally on the same unit minutes later) - so the seed now declares
+0x8 exactly like the volumes this kernel mounts, and the patch refuses any
+other starting value instead of guessing.
 """
 import argparse
 import hashlib
@@ -55,6 +68,9 @@ TARGET_UUID = '18AB5557-DC2D-469B-8758-855E60F5B0DF'
 BLOCK = 4096
 OBJECT_TYPE_APFS = 0x000D  # volume superblock
 FLETCHER_MOD = (1 << 32) - 1
+APSB_INCOMPAT_OFFSET = 56  # apfs_incompatible_features in the volume superblock
+SEED_INCOMPAT_FORMATTER = 0x1  # APFS_INCOMPAT_CASE_INSENSITIVE, as newfs_apfs writes it
+SEED_INCOMPAT_TARGET = 0x8  # APFS_INCOMPAT_NORMALIZATION_INSENSITIVE, as the IPSW volumes declare
 
 
 def run(command, **kwargs):
@@ -110,7 +126,10 @@ def patch_volume_uuid(image, created_uuid, target_uuid=TARGET_UUID):
     """Rewrite every raw occurrence of the created volume UUID to the target.
 
     Every occurrence must sit in a volume-superblock block; anything else
-    aborts instead of guessing. Returns the number of occurrences replaced.
+    aborts instead of guessing. The same pass rewrites each touched
+    superblock's incompatible-feature word from the formatter's value to
+    SEED_INCOMPAT_TARGET (see the module docstring). Returns (UUID
+    occurrences replaced, superblocks normalized).
     """
     source = uuid.UUID(created_uuid).bytes
     target = uuid.UUID(target_uuid).bytes
@@ -135,8 +154,14 @@ def patch_volume_uuid(image, created_uuid, target_uuid=TARGET_UUID):
                 f'(object type 0x{object_type:04x}); refusing to patch')
         require(block_checksums_valid(block),
                 f'Volume superblock block {block_index} fails its checksum before patching')
+        incompat = struct.unpack('<Q', block[APSB_INCOMPAT_OFFSET:APSB_INCOMPAT_OFFSET + 8])[0]
+        require(incompat == SEED_INCOMPAT_FORMATTER,
+                f'Volume superblock block {block_index} declares incompatible features '
+                f'0x{incompat:x}, not the formatter value 0x{SEED_INCOMPAT_FORMATTER:x}; refusing to patch')
     for offset in occurrences:
         data[offset:offset + 16] = target
+    for block_index in touched:
+        struct.pack_into('<Q', data, block_index * BLOCK + APSB_INCOMPAT_OFFSET, SEED_INCOMPAT_TARGET)
     for block_index in touched:
         base = block_index * BLOCK
         data[base:base + BLOCK] = repair_block(bytes(data[base:base + BLOCK]))
@@ -144,7 +169,15 @@ def patch_volume_uuid(image, created_uuid, target_uuid=TARGET_UUID):
     verify = image.read_bytes()
     require(verify.find(source) == -1, 'Created UUID still present after patching')
     require(verify.count(target) == len(occurrences), 'Pinned UUID occurrence count changed while patching')
-    return len(occurrences)
+    for block_index in touched:
+        base = block_index * BLOCK
+        block = verify[base:base + BLOCK]
+        require(struct.unpack('<Q', block[APSB_INCOMPAT_OFFSET:APSB_INCOMPAT_OFFSET + 8])[0] == SEED_INCOMPAT_TARGET,
+                f'Volume superblock block {block_index} does not declare the target incompatible '
+                'features after patching')
+        require(block_checksums_valid(block),
+                f'Volume superblock block {block_index} fails its checksum after patching')
+    return len(occurrences), len(touched)
 
 
 # --- Seed construction --------------------------------------------------------
@@ -234,7 +267,7 @@ def main():
         if os_device:
             subprocess.run(['hdiutil', 'detach', os_device], check=False)
 
-    replaced = patch_volume_uuid(image, created_uuid)
+    replaced, normalized = patch_volume_uuid(image, created_uuid)
 
     # The APFS driver's own acceptance: the patched image must attach and
     # diskutil must report the pinned volume UUID.
@@ -253,13 +286,17 @@ def main():
     require(len(data) == args.size_mib * 1024 ** 2 and data[32:36] == b'NXSB',
             'Host formatting did not produce the requested raw APFS container')
     report = dict(volume_uuid=TARGET_UUID, created_volume_uuid=created_uuid,
-                  uuid_occurrences_replaced=replaced, bytes=len(data),
+                  uuid_occurrences_replaced=replaced,
+                  incompatible_features_normalized=normalized, bytes=len(data),
                   sha256=hashlib.sha256(data).hexdigest(),
                   source_regular_files=count, source_regular_bytes=total,
                   guest_mutable=True, initial_seed_signature_verified=False,
                   seed='Original private/var excluding staged_system_apps; symlinks preserved; '
                        'runtime directories added; volume UUID rewritten to the pinned scratch '
-                       'UUID with APFS object checksums repaired and re-verified by attach')
+                       'UUID and the volume incompatible features rewritten from the formatter '
+                       'case-insensitive-only declaration to the IPSW volumes normalization-'
+                       'insensitive declaration in the same pass, with APFS object checksums '
+                       'repaired and re-verified by attach')
     (out / 'seed.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 
