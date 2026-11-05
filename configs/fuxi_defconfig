@@ -31,6 +31,16 @@ CONFIG_XNU_BOOT_PROGRESS=y
 CONFIG_XNU_OWNER_CACHE_MOUNT=y
 CONFIG_XNU_OWNER_CACHE_STARTUP=y
 CONFIG_XNU_OWNER_UNION_SYSTEMOS=y
+# The scratch Data stage (patches/xnu-12377/offline-owner-systemos-mount.patch): BOOT_MANIFEST is the data
+# mount's own guard and makes the cache prepare publish the boot manifest; DATA_MOUNT then mounts the
+# payload's Data seed (Payloads/scratch-data.img, a RAM disk) writable at /private/var before launchd is
+# exec'd, selecting the volume by this UUID through NativeRamBlock's native_ram_block_volume_seed. The
+# UUID is the one upstream pins (scripts/build-cpu-desktop-kernel.py); scripts/build-fuxi-data-seed.py
+# builds the seed in the image job and rewrites its volume UUID to this value. Sheng's defconfig carries
+# the same three settings with the same UUID. The seed is ephemeral (no persistent store on this board).
+CONFIG_XNU_OWNER_BOOT_MANIFEST=y
+CONFIG_XNU_OWNER_DATA_MOUNT=y
+CONFIG_XNU_OWNER_DATA_VOLUME_UUID="18AB5557-DC2D-469B-8758-855E60F5B0DF"
 # The SoC fragment enables the Adreno driver; it is not selected for fuxi yet.
 # CONFIG_XNU_NATIVE_ADRENO is not set
 # Without this the BCM2837 target maps PLATFORM_PANIC_LOG_PADDR (0x3c0fc000, RAM on a Raspberry Pi 3) in PE_create_console,
