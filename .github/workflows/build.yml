@@ -204,9 +204,14 @@ jobs:
             echo "::error::RAM block binding check failed"; missing=1
           fi
           exit $missing
+      - name: Build system trust bundle
+        run: |
+          python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-system-trust.py" \
+            --out "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
       - name: Build payload
         working-directory: unixnu
-        run: ./unixnu build payload --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --unique-chip-id "$BRINGUP_SEED"
+        run: ./unixnu build payload --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --unique-chip-id "$BRINGUP_SEED" \
+            --trust-cache "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
       - name: Build firmware
         working-directory: unixnu
         # DEBUG: the firmware prints its log on the panel, the only console before the touch report.
