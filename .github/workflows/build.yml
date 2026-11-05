@@ -208,15 +208,22 @@ jobs:
         run: |
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-system-trust.py" \
             --out "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
+    - name: Build Data seed
+      run: |
+        tree=$(ls -d "$GITHUB_WORKSPACE"/unixnu/out/*/*/fuxi/tree | head -n 1)
+        python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-data-seed.py" \
+          --os-dmg "$tree/.cache/firmware/target-volumes/044-76040-038.dmg" \
+          --out "$GITHUB_WORKSPACE/fuxi/build/data-seed"
       - name: Build payload
         working-directory: unixnu
         run: |
           ./unixnu build payload --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --unique-chip-id "$BRINGUP_SEED" \
-            --trust-cache "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
+            --trust-cache "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle" \
+            --data-ramdisk "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data.cdr"
       - name: Build firmware
         working-directory: unixnu
         # DEBUG: the firmware prints its log on the panel, the only console before the touch report.
-        run: ./unixnu build firmware --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --target DEBUG
+        run: ./unixnu build firmware --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --target DEBUG \
       - name: Pack the boot image
         working-directory: unixnu
         run: |
@@ -236,6 +243,8 @@ jobs:
           cd "$RUNNER_TEMP/image"
           gzip -9 -n -c "$kernel" > kernel.macho.gz
           cp "$report" payload.json
+          cp "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data.cdr" data-seed.cdr
+          shasum -a 256 data-seed.cdr | sed "s#  .*#  data-seed.cdr#" > data-seed.cdr.sha256
           for f in boot.img kernel.macho.gz; do shasum -a 256 "$f" | sed "s#  .*#  $f#" > "$f.sha256"; done
           "$openssl" rand -hex 32 > boot.key
           for f in boot.img kernel.macho.gz; do
@@ -245,7 +254,7 @@ jobs:
             -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -in boot.key -out boot.key.enc
           rm -f boot.key boot.img kernel.macho.gz
           mkdir -p "$RUNNER_TEMP/encrypted"
-          mv boot.img.enc kernel.macho.gz.enc boot.key.enc boot.img.sha256 kernel.macho.gz.sha256 boot.json payload.json \
+          mv boot.img.enc kernel.macho.gz.enc boot.key.enc boot.img.sha256 kernel.macho.gz.sha256 boot.json payload.json data-seed.cdr data-seed.cdr.sha256 \
             "$RUNNER_TEMP/encrypted/"
           ls -l "$RUNNER_TEMP/encrypted"
       - name: Upload the encrypted boot image
