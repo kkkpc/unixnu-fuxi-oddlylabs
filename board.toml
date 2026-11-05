@@ -117,6 +117,10 @@ size_mib = 192
 loader = "firmware"
 title = "UniXNU"
 panic_screen = true
+# The payload trust cache must be upstream's two-module original bundle (StaticTrustCache +
+# Cryptex1,SystemTrustCache); payload.py rejects any other bundle. scripts/build-fuxi-system-trust.py
+# builds it in CI and verifies the same digest before bundling.
+trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235a7323a7"]
 # -v, serial=3, debug=0x14e and kt_fixed_zones=120 as on UniXNU-sheng and the other SM8550 ports. sheng-pmgr=2 publishes
 # the original ApplePMGRNub that AMFI waits for (kits/fuxi/ShengPlatformPower.cpp, as UniXNU-sheng); without it AMFI panics
 # with "AMFI: No PMGR?" a few seconds into bsd_init. sheng-smp=1 and armcpu-spi-ipi=1 start the seven secondary cores as on
