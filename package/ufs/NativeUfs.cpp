@@ -1966,8 +1966,17 @@ static bool mediaWithUuidExists (const char *uuid, NativeUfsBlock *window)
   OSDictionary *properties = OSDictionary::withCapacity (1);
   OSString *wanted = OSString::withCString (uuid);
   bool found = false;
-  if (matching && properties && wanted && properties->setObject ("UUID", wanted) &&
-      matching->setObject ("IOPropertyMatch", properties)) {
+  // fuxi patch: in the unverified configuration this board builds, validate()
+  // leaves gPendingUuid empty, so the UUID property match below can never
+  // succeed and publication always times out at the first window (SystemOS),
+  // discarding the OS window unstarted. With no signed UUID to match, fall
+  // back to ancestry alone: any IOMedia whose ancestor chain reaches this
+  // window counts as its published media. Verified builds always fill the
+  // UUID in validate(), so their match is unchanged.
+  bool matchUuid = uuid && uuid[0] != '\0';
+  if (matching && properties && wanted &&
+      (!matchUuid || (properties->setObject ("UUID", wanted) &&
+                      matching->setObject ("IOPropertyMatch", properties)))) {
     OSIterator *iterator = IOService::getMatchingServices (matching);
     if (iterator) {
       for (unsigned matches = 0; matches < 64 && !found; ++matches) {
