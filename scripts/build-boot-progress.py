@@ -21,6 +21,18 @@ fuxi archive builders. The verified UFS driver needs only
 boot_progress_poll; the other twelve are the patch's call sites. The
 script also asserts every entry point is defined in the object, so a
 missing one fails here with its name instead of at the kernel link.
+
+It also carries the watchdog policy the same patch calls from
+load_init_program when XNU_OWNER_DATA_MOUNT and XNU_BOOT_PROGRESS are
+both on: sheng_boot_watchdog_policy, compiled here from
+kits/fuxi/BootWatchdogPolicy.c with the bootstrap pass's kern_exec.o
+compile record (the BSD-side record, as the policy uses the BSD syscalls;
+sheng's own builder does the same). The policy source is the port in
+package/BootWatchdogPolicy.c; the script asserts the symbol is defined,
+so a missing policy fails here instead of at the kernel link (Build #51:
+exactly that one undefined symbol, after the Data stage flipped
+DATA_MOUNT on). Sheng's other kit sources (BootFaultProbe, BootDiagExport,
+AdspFirmware) still have no fuxi counterpart and are not compiled here.
 """
 import hashlib
 import json
@@ -34,6 +46,8 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 SOURCE = ROOT / 'kits/fuxi/FuxiBootProgress.c'
 RECORD = ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/osfmk/DEVELOPMENT/startup.o.json'
+POLICY_SOURCE = ROOT / 'kits/fuxi/BootWatchdogPolicy.c'
+POLICY_RECORD = ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/bsd/DEVELOPMENT/kern_exec.o.json'
 
 ENTRY_POINTS = ['_boot_progress_init', '_boot_progress_start', '_boot_progress_active',
                 '_boot_progress_bind', '_boot_progress_putc', '_boot_progress_stage',
@@ -83,12 +97,49 @@ defined = {fields[-1] for line in listing.splitlines()
 require(set(ENTRY_POINTS) <= defined,
         f"boot-progress archive is missing entry points: {sorted(set(ENTRY_POINTS) - defined)}")
 
+# The watchdog policy: same record-replay shape as sheng's builder, but
+# from this tree's kern_exec.o record. The record exists by now: the
+# bootstrap pass compiled kern_exec.o before failing at the link, and this
+# script only runs on the final pass (XNU_BOOT_PROGRESS=0 in bootstrap).
+require(POLICY_SOURCE.is_file(), 'kits/fuxi/BootWatchdogPolicy.c is missing')
+require(POLICY_RECORD.is_file(),
+        'bootstrap compile record kern_exec.o.json is missing: run the bootstrap pass first')
+policy_record = json.loads(POLICY_RECORD.read_text().strip().rstrip(','))
+policy_obj = OUT / 'BootWatchdogPolicy.o'
+policy_command, j, policy_arguments = [], 0, policy_record['arguments']
+while j < len(policy_arguments):
+    arg = policy_arguments[j]
+    if arg == policy_record['file']:
+        policy_command.append(str(POLICY_SOURCE))
+    elif arg == '-o':
+        policy_command += ['-o', str(policy_obj)]
+        j += 1
+    elif arg in ('-MF', '-MT', '-MJ'):
+        j += 1
+    elif arg == '-Xclang' and j + 1 < len(policy_arguments) and policy_arguments[j + 1].startswith('-W'):
+        j += 1
+    elif not arg.startswith('-W'):
+        policy_command.append(arg)
+    j += 1
+policy_command += ['-mgeneral-regs-only', '-Wall', '-Wextra', '-Werror']
+run(policy_command, cwd=policy_record['directory'])
+
+policy_listing = run(['xcrun', 'nm', '-g', str(policy_obj)], text=True)
+policy_defined = {fields[-1] for line in policy_listing.splitlines()
+                  if len(fields := line.split()) >= 3 and fields[1] != 'U'}
+require('_sheng_boot_watchdog_policy' in policy_defined,
+        'boot-progress archive is missing _sheng_boot_watchdog_policy')
+
 archive = OUT / 'libBootProgress.a'
 archive.unlink(missing_ok=True)
-run(['xcrun', 'ar', 'rcs', str(archive), str(obj)])
+run(['xcrun', 'ar', 'rcs', str(archive), str(obj), str(policy_obj)])
 (OUT / 'build-report.json').write_text(json.dumps({
     'source': 'kits/fuxi/FuxiBootProgress.c',
     'source_sha256': hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
     'object_sha256': hashlib.sha256(obj.read_bytes()).hexdigest(),
     'entry_points': sorted(ENTRY_POINTS),
+    'policy_source': 'kits/fuxi/BootWatchdogPolicy.c',
+    'policy_source_sha256': hashlib.sha256(POLICY_SOURCE.read_bytes()).hexdigest(),
+    'policy_object_sha256': hashlib.sha256(policy_obj.read_bytes()).hexdigest(),
+    'policy_symbol': '_sheng_boot_watchdog_policy',
 }, indent=2) + '\n')
