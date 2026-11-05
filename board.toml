@@ -65,7 +65,7 @@ archives = [
   "build-fuxi-hid-input.py",
   "build-fuxi-ram-block.py",
   "component:VirtioMmioBlock",
-  "build-virtio-mmio-bindings.py --component VirtioMmioBlock",
+  "build-fuxi-virtio-bindings.py",
   "build-fuxi-ufs.py",
   "build-fuxi-touch.py",
 ]
