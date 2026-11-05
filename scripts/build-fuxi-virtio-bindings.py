@@ -21,6 +21,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -97,6 +98,12 @@ run(['xcrun', 'clang', '-target', 'arm64-apple-ios17.0', '-isysroot', sdk, '-c',
 archive = OUT / 'libVirtioMmioBlock.a'
 archive.unlink(missing_ok=True)
 run(['xcrun', 'ar', 'rcs', archive, obj, OUT / 'original-bindings.o'])
+# The baseline's dual-transport check addresses each transport's object by its
+# archive's stem (libVirtioMmioBlock.a -> VirtioMmioBlock.o) and compares its
+# hash with bindings.json's compiled_object_sha256 (Build #38). The compiled
+# object is NativeVirtioBlock.o; leave a byte-identical copy under the stem
+# name so the check reads the same bytes it audited.
+shutil.copyfile(obj, OUT / 'VirtioMmioBlock.o')
 report = {'compiled_object_sha256': hashlib.sha256(raw).hexdigest(),
           'virtual_methods_checked': SLOTS,
           'concrete_overrides': len(owned),

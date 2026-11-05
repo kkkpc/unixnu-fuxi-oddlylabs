@@ -18,6 +18,7 @@ NativeRamBlock imports weakly (native_ufs_store_*) are provided by the ShengUfs 
 kits/fuxi/FuxiRamBlockStore.cpp held no-store stubs for them until the driver joined the link (Build #28)
 and is now an empty translation unit kept so this build's file list is unchanged.
 """
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -128,7 +129,13 @@ run(['xcrun', 'clang', '-target', 'arm64-apple-ios17.0', '-isysroot', sdk, '-c',
 archive = OUT / 'libRamBlock.a'
 archive.unlink(missing_ok=True)
 run(['xcrun', 'ar', 'rcs', archive, obj, OUT / 'original-bindings.o', store])
+# The baseline's dual-transport check (active now that the virtio transport is
+# linked too) addresses this object by the archive's stem (libRamBlock.a ->
+# RamBlock.o) and compares its hash with the report's compiled_object_sha256
+# (Build #38). Leave a byte-identical copy under the stem name.
+(OUT / 'RamBlock.o').write_bytes(raw)
 report = {'source': 'kits/fuxi/NativeRamBlock.cpp', 'original_slots': SLOTS, 'owned_slots': owned,
+          'compiled_object_sha256': hashlib.sha256(raw).hexdigest(),
           'bindings': {name: hex(va) for name, va in sorted(bindings.items())}}
 (OUT / 'bindings.json').write_text(json.dumps(report, indent=2) + '\n')
 print(f'PASS: NativeRamBlock {len(owned)} own slots, {len(bindings)} original storage imports bound; archive {archive.relative_to(ROOT)}')
