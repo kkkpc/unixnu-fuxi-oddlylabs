@@ -23,7 +23,7 @@ counts as its published media, and verified builds are unchanged. They are built
 script also replays the board's storage ABI audit (below) and compiles the board's
 package/SourceRootBinding.cpp into the same archive; the compile flags mirror the
 catalog recipe (build-arm-driver.py for NativeUfs: -DNATIVE_VERIFIED_BLOCK=1 and
--DNATIVE_VERIFIED_BLOCK_MULTI_POLICY=1 with the VerifiedRoot include). The policy data
+-DNATIVE_VERIFIED_BLOCK_MULTI_POLICY=1 with the VerifiedRoot include and the drivers/VirtioMmioBlock include (VerifiedBlockPolicy.h lives there)). The policy data
 that mode references (verified_root_policies / verified_root_key /
 verified_root_policy_count, plus the vr_* implementation in kits/VerifiedRoot) is
 supplied by the probe bundle archive that scripts/build-fuxi-owner-root.py generates
@@ -67,7 +67,8 @@ STORAGE_INCLUDE = ROOT / 'build/storage-abi/include'
 FLAGS = ['-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-Wno-c99-designator', '-Wno-reorder-init-list',
          '-Wno-deprecated-enum-enum-conversion', '-Wno-unnecessary-virtual-specifier', '-mgeneral-regs-only',
          '-I', ROOT / '.cache/xnu-work/osfmk', '-I', STORAGE_INCLUDE,
-         '-I', ROOT / 'kits/VerifiedRoot/include', '-DNATIVE_VERIFIED_BLOCK=1', '-DNATIVE_VERIFIED_BLOCK_MULTI_POLICY=1']
+         '-I', ROOT / 'kits/VerifiedRoot/include', '-I', ROOT / 'drivers/VirtioMmioBlock',
+         '-DNATIVE_VERIFIED_BLOCK=1', '-DNATIVE_VERIFIED_BLOCK_MULTI_POLICY=1']
 
 
 def run(command, **kwargs):
