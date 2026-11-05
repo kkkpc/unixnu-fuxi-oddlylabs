@@ -1,1 +1,189 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwojIFNQRFgtTGljZW5zZS1JZGVudGlmaWVyOiBCU0QtMi1DbGF1c2UtUGF0ZW50CiIiIkJ1aWxkIGJ1aWxkL3NoZW5nLXVmcy9saWJTaGVuZ1Vmcy5hOiB0aGUgU2hlbmdVZnMgVUZTIHJvb3QgZHJpdmVyIGZvciBmdXhpLCBkZXZpY2Utc2lkZS4KClRoZSBzb3VyY2VzIGluIHBhY2thZ2UvdWZzLyAobGlua2VkIGludG8gdGhlIGJ1aWxkIHRyZWUgYXMga2l0cy9mdXhpL3Vmcy8sIGxpa2UgZXZlcnkKZGV2aWNlIHBhY2thZ2Ugc291cmNlKSBhcmUgY29waWVzIG9mIFVuaVhOVS9TaGVuZ1VmcyAoZHJpdmVyIGZpbGVzIHVuY2hhbmdlZCBzaW5jZQo5OWQ4YmNkOyBjb3BpZWQgZnJvbSB0aGUgYWYxNDA2OCB0cmVlLCBCU0QtMi1DbGF1c2UsIHNlZSB0aGUgTElDRU5TRSBmaWxlIGJlc2lkZSB0aGVtKSwKd2l0aCB0aHJlZSBmdXhpIHBhdGNoZXMgaW4gTmF0aXZlVWZzLmNwcDogdGhlIHJlYWQtcGF0aCB0aW1pbmcgY2FsbHMgdXNlIHRpbWVyVGlja3MgYW5kCm5hdGl2ZV91ZnNfcmVhZF90aWNrcyBvdXRzaWRlIHRoZSBOQVRJVkVfVkVSSUZJRURfQkxPQ0sgcmVnaW9uIHRoYXQgZGVmaW5lcyB0aGVtLCB3aGljaApvbmx5IHRoZSB2ZXJpZmllZCBjb25maWd1cmF0aW9uIHVwc3RyZWFtIGJ1aWxkcyBldmVyIGNvbXBpbGVzLCBzbyB0aGUgY2FsbHMgYXJlIGdhdGVkIHRoZQpzYW1lIHdheSAoQnVpbGQgIzE0IGVycm9ycyk7IHN0YXJ0Um9vdCdzIGlkZW50aXR5IHZhbGlkYXRpb24gcmV0dXJucyBmYWxzZQp1bmNvbmRpdGlvbmFsbHkgd2l0aG91dCB0aGUgZGVmaW5lICgiUm9vdCBwdWJsaWNhdGlvbiByZXF1aXJlcyBvd25lciB2ZXJpZmljYXRpb24gaW4KZXZlcnkgYnVpbGQiKSwgd2hpY2ggd291bGQgcHVibGlzaCBub3RoaW5nIGF0IGFsbCBpbiB0aGlzIGNvbmZpZ3VyYXRpb24sIHNvIGl0cwp1bnZlcmlmaWVkIGJyYW5jaCByZXR1cm5zIHRydWUgaW5zdGVhZCDigJQgd2luZG93IGRpc3RpbmN0bmVzcyBpcyBhbHJlYWR5IGVuZm9yY2VkIGJ5CnVmc0J1aWxkUm9vdFBsYW4sIGFuZCBwZXItYmxvY2sgdmVyaWZpY2F0aW9uIGlzIHdoYXQgdGhlIGRyb3BwZWQgb3duZXItcm9vdCBjaGFpbiB3b3VsZApoYXZlIGFkZGVkIChvd25lciBkZWNpc2lvbiwgMjAyNi0xMS0wNCk7IGFuZCB0aGUgcHVibGlzaGVyJ3MgcGVyLXdpbmRvdyBtZWRpYSB3YWl0Cm1hdGNoZXMgSU9NZWRpYSBieSB0aGUgc2lnbmVkIHZvbHVtZSBVVUlEIHRoYXQgb25seSB0aGUgdmVyaWZpZWQgYnJhbmNoIG9mIHZhbGlkYXRlKCkKZmlsbHMsIHNvIHdpdGhvdXQgdGhlIGRlZmluZSB0aGUgd2FpdCBjb3VsZCBuZXZlciBzdWNjZWVkIGFuZCBwdWJsaWNhdGlvbiB0aW1lZCBvdXQgYXQKdGhlIGZpcnN0IHdpbmRvdyAoU3lzdGVtT1MpLCBkaXNjYXJkaW5nIHRoZSBPUyB3aW5kb3cgdW5zdGFydGVkIChkZXZpY2UsIDIwMjYtMTEtMDU6CnRoZSByb290bWF0Y2ggYm9vdCdzICJGYWlsZWQgdG8gbW91bnQgcm9vdCBkZXZpY2UiKSwgc28gd2l0aCBhbiBlbXB0eSBVVUlEIHRoZSB3YWl0CmZhbGxzIGJhY2sgdG8gYW5jZXN0cnkgYWxvbmUg4oCUIGFueSBJT01lZGlhIHdob3NlIGFuY2VzdG9yIGNoYWluIHJlYWNoZXMgdGhlIHdpbmRvdwpjb3VudHMgYXMgaXRzIHB1Ymxpc2hlZCBtZWRpYSwgYW5kIHZlcmlmaWVkIGJ1aWxkcyBhcmUgdW5jaGFuZ2VkLiBUaGV5IGFyZSBidWlsdCBoZXJlIGluc3RlYWQgb2YgdGhyb3VnaCB0aGUgY2F0YWxvZyBjb21wb25lbnQgYmVjYXVzZSB0aGlzCnNjcmlwdCBhbHNvIHJlcGxheXMgdGhlIGJvYXJkJ3Mgc3RvcmFnZSBBQkkgYXVkaXQgKGJlbG93KSBhbmQgY29tcGlsZXMgdGhlIGJvYXJkJ3MKcGFja2FnZS9Tb3VyY2VSb290QmluZGluZy5jcHAgaW50byB0aGUgc2FtZSBhcmNoaXZlOyB0aGUgY29tcGlsZSBmbGFncyBtaXJyb3IgdGhlCmNhdGFsb2cgcmVjaXBlIChidWlsZC1hcm0tZHJpdmVyLnB5IGZvciBOYXRpdmVVZnM6IC1ETkFUSVZFX1ZFUklGSUVEX0JMT0NLPTEgYW5kCi1ETkFUSVZFX1ZFUklGSUVEX0JMT0NLX01VTFRJX1BPTElDWT0xIHdpdGggdGhlIFZlcmlmaWVkUm9vdCBpbmNsdWRlKS4gVGhlIHBvbGljeSBkYXRhCnRoYXQgbW9kZSByZWZlcmVuY2VzICh2ZXJpZmllZF9yb290X3BvbGljaWVzIC8gdmVyaWZpZWRfcm9vdF9rZXkgLwp2ZXJpZmllZF9yb290X3BvbGljeV9jb3VudCwgcGx1cyB0aGUgdnJfKiBpbXBsZW1lbnRhdGlvbiBpbiBraXRzL1ZlcmlmaWVkUm9vdCkgaXMKc3VwcGxpZWQgYnkgdGhlIHByb2JlIGJ1bmRsZSBhcmNoaXZlIHRoYXQgc2NyaXB0cy9idWlsZC1mdXhpLW93bmVyLXJvb3QucHkgZ2VuZXJhdGVzCmVhcmxpZXIgaW4gdGhlIGJ1aWxkOyB0aGUgb3duZXItcG9saWN5IHBpcGVsaW5lIGl0IHJ1bnMgaXMgZnJvemVuIHRvIHRoZSBJUFNXIHBheWxvYWQKKGl0cyByb290IFVVSUQgYW5kIGltYWdlIGRpZ2VzdHMgYXJlIHRoaXMgaVBhZE9TIDE3LjcuMTEgaW1hZ2UncyBvd24gY29uc3RhbnRzKSwgbm90CnRvIHRoZSBzaGVuZyBib2FyZC4gT3duZXIgZGVjaXNpb24gKDIwMjYtMTEtMDUpOiB0aGUgZnVsbCBvd25lci1yb290IHRydXN0IGNoYWluIGlzCnBvcnRlZCDigJQgd2l0aCBpdCBvZmYsIHRoZSBkZXZpY2UgbW91bnRlZCB0aGUgVUZTIHJvb3QgYW5kIHBhbmlja2VkIGluIGJzZF9pbml0Cigicm9vdHZwIG5vdCBhdXRoZW50aWNhdGVkIGFmdGVyIG1vdW50aW5nIiksIGJlY2F1c2Ugb24gYSBub24tbWFjT1MgdGFyZ2V0IHRoZQpGU0lPQ19LRVJORUxfUk9PVEFVVEggY2hlY2sgcGFzc2VzIG9ubHkgdGhyb3VnaCB0aGUgb3duZXIgYXV0aG9yaXphdGlvbiB0aGUgY2hhaW4KcHJvdmlkZXMuIFRoZSBiaW5kaW5nIG9iamVjdCBzdXBwbGllcyBuYXRpdmVfdmVyaWZpZWRfYmxvY2tfcm9vdF9hdXRob3JpemVkLCB3aGljaApic2RfaW5pdCBjb25zdWx0cyB0aHJvdWdoIHRoZSBvZmZsaW5lLW93bmVyLXJvb3QtYmluZGluZy1hdWRpdCBwYXRjaDsgaXQgYW5zd2Vycwpmcm9tIG5hdGl2ZV91ZnNfYmxvY2tfYXV0aGVudGljYXRlcyBpbiB0aGUgZHJpdmVyIG9iamVjdC4gVGhlIGNhdGFsb2cgU2hlbmdVZnMKY29tcG9uZW50IGlzIHRoZXJlZm9yZSBub3Qgc2VsZWN0ZWQ7IENPTkZJR19YTlVfTkFUSVZFX1VGUz15IGtlZXBzIHRoZSBuYXRpdmUKcGVyc29uYWxpdHkgYW5kIGJ1aWxkLXhudS00ay1iYXNlbGluZS5zaCBmb3JjZS1sb2FkcyB0aGlzIGFyY2hpdmUgZnJvbSBpdHMgZml4ZWQgcGF0aC4KClRoZSBjb21waWxlIHJlcGxheXMgdGhlIElPUGxhdGZvcm1FeHBlcnQgY29tcGlsZSByZWNvcmQgd2l0aCB0aGUgc3RvcmFnZSBoZWFkZXJzIHRoYXQKcHJlcGFyZS1zdG9yYWdlLWhlYWRlcnMucHkgbGVhdmVzIGluIGJ1aWxkL3N0b3JhZ2UtYWJpL2luY2x1ZGUsIGV4YWN0bHkgbGlrZQpidWlsZC1mdXhpLXJhbS1ibG9jay5weSwgYW5kIGF1ZGl0cyBOYXRpdmVVZnNCbG9jaydzIElPQmxvY2tTdG9yYWdlRGV2aWNlIGltcG9ydHMKYWdhaW5zdCB0aGUga2VybmVsY2FjaGUgYWRkcmVzc2VzIGluIHNjcmlwdHMvZnV4aV9zdG9yYWdlX2FiaS5weSB0aGUgc2FtZSB3YXkuIFRoZQphbGlhcyBkZWZpbml0aW9ucyB0aGVtc2VsdmVzIGFyZSBlbWl0dGVkIG9uY2UgcGVyIGtlcm5lbCwgYnkgdGhlIFJBTSBibG9jayBidWlsZDoKZGVmaW5pbmcgdGhlbSBoZXJlIHRvbyBnYXZlIGR1cGxpY2F0ZSBzeW1ib2xzIGF0IHRoZSBrZXJuZWwgbGluayAoQnVpbGQgIzI4KS4KIiIiCmltcG9ydCBoYXNobGliCmltcG9ydCBqc29uCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQgcmUKaW1wb3J0IHN0cnVjdAppbXBvcnQgc3VicHJvY2VzcwppbXBvcnQgc3lzCgpST09UID0gUGF0aChfX2ZpbGVfXykucmVzb2x2ZSgpLnBhcmVudHNbMV0gICAjIHRoZSBhc3NlbWJsZWQgYnVpbGQgdHJlZTogc2NyaXB0cyBhcmUgY29waWVkIGludG8gaXQKT1VUID0gUk9PVCAvICdidWlsZC9zaGVuZy11ZnMnCk9VVC5ta2RpcihwYXJlbnRzPVRydWUsIGV4aXN0X29rPVRydWUpCnN5cy5wYXRoLmluc2VydCgwLCBzdHIoUk9PVCAvICdraXRzL1hudVByZWxpbmsnKSkKc3lzLnBhdGguaW5zZXJ0KDAsIHN0cihQYXRoKF9fZmlsZV9fKS5yZXNvbHZlKCkucGFyZW50KSkKZnJvbSBuYXRpdmVfcHJlbGluayBpbXBvcnQgbWFjaG8KZnJvbSBmdXhpX3N0b3JhZ2VfYWJpIGltcG9ydCBCSU5ESU5HUywgUFVSRSwgU0xPVFMsIFNUT1JBR0VfU0xPVFMKCktJVCA9IFJPT1QgLyAna2l0cy9mdXhpL3VmcycKU1RPUkFHRV9JTkNMVURFID0gUk9PVCAvICdidWlsZC9zdG9yYWdlLWFiaS9pbmNsdWRlJwpGTEFHUyA9IFsnLVdhbGwnLCAnLVdleHRyYScsICctV2Vycm9yJywgJy1Xbm8tdW51c2VkLXBhcmFtZXRlcicsICctV25vLWM5OS1kZXNpZ25hdG9yJywgJy1Xbm8tcmVvcmRlci1pbml0LWxpc3QnLAogICAgICAgICAnLVduby1kZXByZWNhdGVkLWVudW0tZW51bS1jb252ZXJzaW9uJywgJy1Xbm8tdW5uZWNlc3NhcnktdmlydHVhbC1zcGVjaWZpZXInLCAnLW1nZW5lcmFsLXJlZ3Mtb25seScsCiAgICAgICAgICctSScsIFJPT1QgLyAnLmNhY2hlL3hudS13b3JrL29zZm1rJywgJy1JJywgU1RPUkFHRV9JTkNMVURFLAogICAgICAgICAnLUknLCBST09UIC8gJ2tpdHMvVmVyaWZpZWRSb290L2luY2x1ZGUnLCAnLUROQVRJVkVfVkVSSUZJRURfQkxPQ0s9MScsICctRE5BVElWRV9WRVJJRklFRF9CTE9DS19NVUxUSV9QT0xJQ1k9MSddCgoKZGVmIHJ1bihjb21tYW5kLCAqKmt3YXJncyk6CiAgICByZXR1cm4gc3VicHJvY2Vzcy5jaGVja19vdXRwdXQoW3N0cih2KSBmb3IgdiBpbiBjb21tYW5kXSwgdGltZW91dD0xODAsICoqa3dhcmdzKQoKCmRlZiByZXF1aXJlKHZhbHVlLCBtZXNzYWdlKToKICAgIGlmIG5vdCB2YWx1ZToKICAgICAgICByYWlzZSBTeXN0ZW1FeGl0KG1lc3NhZ2UpCgoKcmVxdWlyZSgoU1RPUkFHRV9JTkNMVURFIC8gJ0lPS2l0L3N0b3JhZ2UvSU9CbG9ja1N0b3JhZ2VEZXZpY2UuaCcpLmlzX2ZpbGUoKSwKICAgICAgICAnYnVpbGQvc3RvcmFnZS1hYmkvaW5jbHVkZSBpcyBtaXNzaW5nOiB0aGUga2VybmVsIHN0ZXAgcHJlcGFyZXMgaXQgZnJvbSByZWZlci9JT1N0b3JhZ2VGYW1pbHknKQpyZWNvcmQgPSBqc29uLmxvYWRzKChST09UIC8gJ2J1aWxkL3hudS9pb3Mtb2JqL0RFVkVMT1BNRU5UX0FSTTY0X0JDTTI4MzcvaW9raXQvREVWRUxPUE1FTlQvSU9QbGF0Zm9ybUV4cGVydC5jcG8uanNvbicpLnJlYWRfdGV4dCgpLnN0cmlwKCkucnN0cmlwKCcsJykpCgoKZGVmIGNvbXBpbGVfc291cmNlKHNvdXJjZSwgb2JqKToKICAgIGNvbW1hbmQsIGksIGFyZ3VtZW50cyA9IFtdLCAwLCByZWNvcmRbJ2FyZ3VtZW50cyddCiAgICB3aGlsZSBpIDwgbGVuKGFyZ3VtZW50cyk6CiAgICAgICAgYXJnID0gYXJndW1lbnRzW2ldCiAgICAgICAgaWYgYXJnID09IHJlY29yZFsnZmlsZSddOgogICAgICAgICAgICBjb21tYW5kLmFwcGVuZChzb3VyY2UpCiAgICAgICAgZWxpZiBhcmcgPT0gJy1vJzoKICAgICAgICAgICAgY29tbWFuZCArPSBbJy1vJywgb2JqXQogICAgICAgICAgICBpICs9IDEKICAgICAgICBlbGlmIGFyZyBpbiAoJy1NRicsICctTVQnLCAnLU1KJyk6CiAgICAgICAgICAgIGkgKz0gMQogICAgICAgIGVsaWYgYXJnID09ICctWGNsYW5nJyBhbmQgYXJndW1lbnRzW2kgKyAxXS5zdGFydHN3aXRoKCctVycpOgogICAgICAgICAgICBpICs9IDEKICAgICAgICBlbGlmIG5vdCBhcmcuc3RhcnRzd2l0aCgnLVcnKToKICAgICAgICAgICAgY29tbWFuZC5hcHBlbmQoYXJnKQogICAgICAgIGkgKz0gMQogICAgcnVuKGNvbW1hbmQgKyBGTEFHUywgY3dkPXJlY29yZFsnZGlyZWN0b3J5J10pCgoKb2JqID0gT1VUIC8gJ05hdGl2ZVVmcy5vJwpjb21waWxlX3NvdXJjZShLSVQgLyAnTmF0aXZlVWZzLmNwcCcsIG9iaikKcmF3ID0gb2JqLnJlYWRfYnl0ZXMoKQppbmZvID0gbWFjaG8ocmF3KQpyZXF1aXJlKGluZm9bJ2tpbmQnXSA9PSAxLCAnUmVxdWlyZSBhY3R1YWwgQVJNNjQgc3VidHlwZS0wIE1hY2gtTyBvYmplY3QnKQpidWlsZF92ZXJzaW9uID0gW3N0cnVjdC51bnBhY2tfZnJvbSgnPDJJJywgcmF3LCBhdCArIDgpIGZvciBjbWQsIGF0LCBfIGluIGluZm9bJ2NvbW1hbmRzJ10gaWYgY21kID09IDB4MzJdCnJlcXVpcmUoYnVpbGRfdmVyc2lvbiA9PSBbKDIsIDB4MTEwMDAwKV0sICdSZXF1aXJlIGlPUzE3IGJ1aWxkIHRhcmdldCcpCnN5bV9hdCA9IG5leHQoYXQgZm9yIGNtZCwgYXQsIF8gaW4gaW5mb1snY29tbWFuZHMnXSBpZiBjbWQgPT0gMikKYXQsIGNvdW50LCBzdHJpbmdzLCBfID0gc3RydWN0LnVucGFja19mcm9tKCc8NEknLCByYXcsIHN5bV9hdCArIDgpCnN5bWJvbHMgPSBbXQpmb3IgaSBpbiByYW5nZShjb3VudCk6CiAgICBpeCwga2luZCwgXywgXywgYWRkcmVzcyA9IHN0cnVjdC51bnBhY2tfZnJvbSgnPElCQkhRJywgcmF3LCBhdCArIGkgKiAxNikKICAgIHN5bWJvbHMuYXBwZW5kKChyYXdbc3RyaW5ncyArIGl4OnJhdy5pbmRleChiJ1wwJywgc3RyaW5ncyArIGl4KV0uZGVjb2RlKCksIGFkZHJlc3MsIGtpbmQpKQp2dGFibGUgPSBuZXh0KHZhIGZvciBuYW1lLCB2YSwgXyBpbiBzeW1ib2xzIGlmIG5hbWUgPT0gJ19fWlRWMTROYXRpdmVVZnNCbG9jaycpCnJlbG9jYXRpb25zID0ge30KZm9yIHNlZ21lbnQgaW4gaW5mb1snc2VnbWVudHMnXToKICAgIGZvciBzZWN0aW9uIGluIHNlZ21lbnRbJ3NlY3Rpb25zJ106CiAgICAgICAgaWYgc2VjdGlvblsndmEnXSA8PSB2dGFibGUgPCBzZWN0aW9uWyd2YSddICsgc2VjdGlvblsnc2l6ZSddOgogICAgICAgICAgICBhdCwgY291bnQgPSBzdHJ1Y3QudW5wYWNrX2Zyb20oJzwySScsIHJhdywgc2VjdGlvblsnY29tbWFuZF9vZmZzZXQnXSArIDU2KQogICAgICAgICAgICBmb3IgaSBpbiByYW5nZShjb3VudCk6CiAgICAgICAgICAgICAgICBvZmZzZXQsIGJpdHMgPSBzdHJ1Y3QudW5wYWNrX2Zyb20oJzwySScsIHJhdywgYXQgKyBpICogOCkKICAgICAgICAgICAgICAgIGlmIGJpdHMgPj4gMjcgJiAxIGFuZCBiaXRzID4+IDI4ID09IDAgYW5kIGJpdHMgPj4gMjUgJiAzID09IDM6CiAgICAgICAgICAgICAgICAgICAgcmVsb2NhdGlvbnNbc2VjdGlvblsndmEnXSArIG9mZnNldF0gPSBzeW1ib2xzW2JpdHMgJiAweGZmZmZmZl1bMF0KZW50cmllcyA9IFtdCndoaWxlIHZ0YWJsZSArIDE2ICsgbGVuKGVudHJpZXMpICogOCBpbiByZWxvY2F0aW9ucyBhbmQgbGVuKGVudHJpZXMpIDwgMjgwOgogICAgZW50cmllcy5hcHBlbmQocmVsb2NhdGlvbnNbdnRhYmxlICsgMTYgKyBsZW4oZW50cmllcykgKiA4XSkKcmVxdWlyZShsZW4oZW50cmllcykgPj0gU0xPVFMsICdOYXRpdmVVZnNCbG9jayB2dGFibGUgaXMgc2hvcnRlciB0aGFuIHRoZSBJT0Jsb2NrU3RvcmFnZURldmljZSBsYXlvdXQnKQpyZXF1aXJlKCdfX19jeGFfcHVyZV92aXJ0dWFsJyBub3QgaW4gZW50cmllcywgJ0NvbmNyZXRlIGJsb2NrIGNsYXNzIHN0aWxsIGhhcyBwdXJlIHZpcnR1YWwgbWV0aG9kcycpCmJpbmRpbmdzID0ge30Kb3duZWQgPSBbXQpmb3Igc2xvdCwgbmFtZSBpbiBlbnVtZXJhdGUoZW50cmllcyk6CiAgICBpZiBuYW1lLnN0YXJ0c3dpdGgoKCdfX1pOMTROYXRpdmVVZnNCbG9jaycsICdfX1pOSzE0TmF0aXZlVWZzQmxvY2snKSk6CiAgICAgICAgb3duZWQuYXBwZW5kKHNsb3QpCiAgICBlbGlmICcyMElPQmxvY2tTdG9yYWdlRGV2aWNlJyBpbiBuYW1lOgogICAgICAgIHJlcXVpcmUoc2xvdCBpbiBTVE9SQUdFX1NMT1RTLCBmJ0lPQmxvY2tTdG9yYWdlRGV2aWNlIG1ldGhvZCBhdCBzbG90IHtzbG90fSBoYXMgbm8ga2VybmVsY2FjaGUgaW1wbGVtZW50YXRpb24nKQogICAgICAgIHJlcXVpcmUoYmluZGluZ3MuZ2V0KG5hbWUsIFNUT1JBR0VfU0xPVFNbc2xvdF0pID09IFNUT1JBR0VfU0xPVFNbc2xvdF0sIGYnT25lIGFkZHJlc3MgZm9yIHtuYW1lfScpCiAgICAgICAgYmluZGluZ3NbbmFtZV0gPSBTVE9SQUdFX1NMT1RTW3Nsb3RdCiAgICBlbHNlOgogICAgICAgICMgSW5oZXJpdGVkIGZyb20gSU9TZXJ2aWNlOiB0aGUgbGlua2VkIHRhYmxlIGlzIGNvbXBhcmVkIHdpdGggdGhlIG9yaWdpbmFsIG9uZSB0aGUgc2FtZSB3YXkgYXMgdGhlIFJBTSBibG9jaydzLgogICAgICAgIHJlcXVpcmUoc2xvdCA8IDE2OCBhbmQgc2xvdCBub3QgaW4gU1RPUkFHRV9TTE9UUywgZidJT1NlcnZpY2UgbWV0aG9kIGV4cGVjdGVkIGF0IHNsb3Qge3Nsb3R9LCBnb3Qge25hbWV9JykKcmVxdWlyZShzZXQoUFVSRSkgPD0gc2V0KG93bmVkKSBhbmQgezAsIDF9IDw9IHNldChvd25lZCksICdBIHJlcXVpcmVkIHRyYW5zcG9ydCBvcGVyYXRpb24gb3IgdGhlIGRlc3RydWN0b3JzIGFyZSBub3QgaW1wbGVtZW50ZWQnKQp1bmRlZmluZWQgPSB7biBmb3IgbiwgXywgayBpbiBzeW1ib2xzIGlmIGsgPT0gMSBhbmQgJ0lPQmxvY2tTdG9yYWdlRGV2aWNlJyBpbiBufQojIFRoZSBhYnN0cmFjdCBEMSBhbmQgRDAgb2YgdGhlIG9yaWdpbmFsIGFyZSBicmsgdHJhcHM6IG9ubHkgdGhlIGJhc2UgRDIgbWF5IGJlIGNhbGxlZC4KcmVxdWlyZShub3QgYW55KHJlLnNlYXJjaChyJ0lPQmxvY2tTdG9yYWdlRGV2aWNlRFswMV1FdiQnLCBuKSBmb3IgbiBpbiB1bmRlZmluZWQpLCAnQ29uY3JldGUgZHJpdmVyIG11c3Qgbm90IGludm9rZSBhYnN0cmFjdCBkZXN0cnVjdGlvbicpCmZvciBuYW1lIGluIHVuZGVmaW5lZCAtIHNldChiaW5kaW5ncyk6CiAgICByZXF1aXJlKG5hbWUgaW4gQklORElOR1MsIGYnVW5xdWFsaWZpZWQgb3JpZ2luYWwgc3RvcmFnZSBpbXBvcnQge25hbWV9JykKICAgIGJpbmRpbmdzW25hbWVdID0gQklORElOR1NbbmFtZV0KcmVxdWlyZSh1bmRlZmluZWQgPT0gc2V0KGJpbmRpbmdzKSwgJ0FsbCBhbmQgb25seSBhY3R1YWwgb3JpZ2luYWwgc3RvcmFnZSBpbXBvcnRzIGJvdW5kJykKIyBUaGUgb3JpZ2luYWwgSU9CbG9ja1N0b3JhZ2VEZXZpY2UgYWxpYXNlcyBhcmUgZGVmaW5lZCBleGFjdGx5IG9uY2UgcGVyIGtlcm5lbCwgYnkKIyBidWlsZC1mdXhpLXJhbS1ibG9jay5weSdzIG9yaWdpbmFsLWJpbmRpbmdzLm8gKHRoZSBzYW1lIGFkZHJlc3NlcywgZnJvbQojIHNjcmlwdHMvZnV4aV9zdG9yYWdlX2FiaS5weTsgdGhlIGtlcm5lbCBidWlsZCBzY3JpcHQgc3RhdGVzIHRoZSBzYW1lIG9uZS1hbGlhcwojIHJ1bGUgZm9yIHRoZSB2aXJ0aW8gdHJhbnNwb3J0KS4gRGVmaW5pbmcgdGhlbSBoZXJlIGFzIHdlbGwgZ2F2ZSAxNyBkdXBsaWNhdGUKIyBzeW1ib2xzIGF0IHRoZSBrZXJuZWwgbGluayBpbiBCdWlsZCAjMjgsIHNvIHRoaXMgYXJjaGl2ZSBjYXJyaWVzIG9ubHkgdGhlIGRyaXZlcgojIG9iamVjdCBhbmQgTmF0aXZlVWZzLm8ncyBhdWRpdGVkIGltcG9ydHMgcmVzb2x2ZSBhZ2FpbnN0IHRoZSBSQU0gYmxvY2sncyBhbGlhc2VzLgojIFRoZSBhdWRpdGVkIHNldCBpcyBzdGlsbCByZWNvcmRlZCBpbiBiaW5kaW5ncy5qc29uIGJlbG93LgojIFRoZSBib2FyZCdzIHJvb3QgYmluZGluZyAocGFja2FnZS9Tb3VyY2VSb290QmluZGluZy5jcHAsIGxpbmtlZCBpbnRvIHRoZSB0cmVlIGFzCiMga2l0cy9mdXhpLykgc3VwcGxpZXMgbmF0aXZlX3ZlcmlmaWVkX2Jsb2NrX3Jvb3RfYXV0aG9yaXplZCBhbmQgaXRzIHR3byBjb21wYW5pb25zLAojIHdoaWNoIHRoZSBvd25lci1yb290IGJzZF9pbml0IHBhdGNoIGNvbnN1bHRzIGFmdGVyIG1vdW50aW5nOyBpdCBhbnN3ZXJzIHRocm91Z2gKIyBuYXRpdmVfdWZzX2Jsb2NrX2F1dGhlbnRpY2F0ZXMgaW4gdGhlIGRyaXZlciBvYmplY3QgYWJvdmUuCmJpbmRpbmdfb2JqID0gT1VUIC8gJ1NvdXJjZVJvb3RCaW5kaW5nLm8nCmNvbXBpbGVfc291cmNlKFJPT1QgLyAna2l0cy9mdXhpL1NvdXJjZVJvb3RCaW5kaW5nLmNwcCcsIGJpbmRpbmdfb2JqKQpiaW5kaW5nX3JhdyA9IGJpbmRpbmdfb2JqLnJlYWRfYnl0ZXMoKQpiaW5kaW5nX2luZm8gPSBtYWNobyhiaW5kaW5nX3JhdykKcmVxdWlyZShiaW5kaW5nX2luZm9bJ2tpbmQnXSA9PSAxLCAnUmVxdWlyZSBhY3R1YWwgQVJNNjQgc3VidHlwZS0wIE1hY2gtTyBiaW5kaW5nIG9iamVjdCcpCmJfc3ltX2F0ID0gbmV4dChhdCBmb3IgY21kLCBhdCwgXyBpbiBiaW5kaW5nX2luZm9bJ2NvbW1hbmRzJ10gaWYgY21kID09IDIpCmJfYXQsIGJfY291bnQsIGJfc3RyaW5ncywgXyA9IHN0cnVjdC51bnBhY2tfZnJvbSgnPDRJJywgYmluZGluZ19yYXcsIGJfc3ltX2F0ICsgOCkKYmluZGluZ19kZWZpbmVkID0gc2V0KCkKZm9yIGkgaW4gcmFuZ2UoYl9jb3VudCk6CiAgICBpeCwga2luZCwgXywgXywgXyA9IHN0cnVjdC51bnBhY2tfZnJvbSgnPElCQkhRJywgYmluZGluZ19yYXcsIGJfYXQgKyBpICogMTYpCiAgICBpZiBraW5kICE9IDE6CiAgICAgICAgYmluZGluZ19kZWZpbmVkLmFkZChiaW5kaW5nX3Jhd1tiX3N0cmluZ3MgKyBpeDpiaW5kaW5nX3Jhdy5pbmRleChiJ1wwJywgYl9zdHJpbmdzICsgaXgpXS5kZWNvZGUoKSkKZm9yIHJlcXVpcmVkIGluICgnX25hdGl2ZV92ZXJpZmllZF9ibG9ja19yb290X2F1dGhvcml6ZWQnLCAnX25hdGl2ZV92ZXJpZmllZF9ibG9ja19tYW5pZmVzdF9zaGEzODQnLAogICAgICAgICAgICAgICAgICdfbmF0aXZlX3ZlcmlmaWVkX2Jsb2NrX3ZvbHVtZV9kZXZpY2UnKToKICAgIHJlcXVpcmUocmVxdWlyZWQgaW4gYmluZGluZ19kZWZpbmVkLCBmJ1NvdXJjZVJvb3RCaW5kaW5nIG9iamVjdCBkb2VzIG5vdCBkZWZpbmUge3JlcXVpcmVkfScpCmFyY2hpdmUgPSBPVVQgLyAnbGliU2hlbmdVZnMuYScKYXJjaGl2ZS51bmxpbmsobWlzc2luZ19vaz1UcnVlKQpydW4oWyd4Y3J1bicsICdhcicsICdyY3MnLCBhcmNoaXZlLCBvYmosIGJpbmRpbmdfb2JqXSkKcmVwb3J0ID0geydzb3VyY2UnOiAna2l0cy9mdXhpL3Vmcy9OYXRpdmVVZnMuY3BwJywgJ3ZlcmlmaWVkX2Jsb2NrJzogVHJ1ZSwKICAgICAgICAgICdjb21waWxlZF9vYmplY3Rfc2hhMjU2JzogaGFzaGxpYi5zaGEyNTYocmF3KS5oZXhkaWdlc3QoKSwKICAgICAgICAgICdiaW5kaW5nX29iamVjdF9zaGEyNTYnOiBoYXNobGliLnNoYTI1NihiaW5kaW5nX3JhdykuaGV4ZGlnZXN0KCksCiAgICAgICAgICAnb3JpZ2luYWxfc2xvdHMnOiBsZW4oZW50cmllcyksICdvd25lZF9zbG90cyc6IG93bmVkLAogICAgICAgICAgJ2JpbmRpbmdzJzoge25hbWU6IGhleCh2YSkgZm9yIG5hbWUsIHZhIGluIHNvcnRlZChiaW5kaW5ncy5pdGVtcygpKX19CihPVVQgLyAnYmluZGluZ3MuanNvbicpLndyaXRlX3RleHQoanNvbi5kdW1wcyhyZXBvcnQsIGluZGVudD0yKSArICdcbicpCnByaW50KGYnUEFTUzogTmF0aXZlVWZzQmxvY2sge2xlbihvd25lZCl9IG93biBzbG90cywge2xlbihiaW5kaW5ncyl9IG9yaWdpbmFsIHN0b3JhZ2UgaW1wb3J0cyBib3VuZDsgYXJjaGl2ZSB7YXJjaGl2ZS5yZWxhdGl2ZV90byhST09UKX0nKQo=
+#!/usr/bin/env python3
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+"""Build build/sheng-ufs/libShengUfs.a: the ShengUfs UFS root driver for fuxi, device-side.
+
+The sources in package/ufs/ (linked into the build tree as kits/fuxi/ufs/, like every
+device package source) are copies of UniXNU/ShengUfs (driver files unchanged since
+99d8bcd; copied from the af14068 tree, BSD-2-Clause, see the LICENSE file beside them),
+with three fuxi patches in NativeUfs.cpp: the read-path timing calls use timerTicks and
+native_ufs_read_ticks outside the NATIVE_VERIFIED_BLOCK region that defines them, which
+only the verified configuration upstream builds ever compiles, so the calls are gated the
+same way (Build #14 errors); startRoot's identity validation returns false
+unconditionally without the define ("Root publication requires owner verification in
+every build"), which would publish nothing at all in this configuration, so its
+unverified branch returns true instead — window distinctness is already enforced by
+ufsBuildRootPlan, and per-block verification is what the dropped owner-root chain would
+have added (owner decision, 2026-11-04); and the publisher's per-window media wait
+matches IOMedia by the signed volume UUID that only the verified branch of validate()
+fills, so without the define the wait could never succeed and publication timed out at
+the first window (SystemOS), discarding the OS window unstarted (device, 2026-11-05:
+the rootmatch boot's "Failed to mount root device"), so with an empty UUID the wait
+falls back to ancestry alone — any IOMedia whose ancestor chain reaches the window
+counts as its published media, and verified builds are unchanged. They are built here instead of through the catalog component because this
+script also replays the board's storage ABI audit (below) and compiles the board's
+package/SourceRootBinding.cpp into the same archive; the compile flags mirror the
+catalog recipe (build-arm-driver.py for NativeUfs: -DNATIVE_VERIFIED_BLOCK=1 and
+-DNATIVE_VERIFIED_BLOCK_MULTI_POLICY=1 with the VerifiedRoot include). The policy data
+that mode references (verified_root_policies / verified_root_key /
+verified_root_policy_count, plus the vr_* implementation in kits/VerifiedRoot) is
+supplied by the probe bundle archive that scripts/build-fuxi-owner-root.py generates
+earlier in the build; the owner-policy pipeline it runs is frozen to the IPSW payload
+(its root UUID and image digests are this iPadOS 17.7.11 image's own constants), not
+to the sheng board. Owner decision (2026-11-05): the full owner-root trust chain is
+ported — with it off, the device mounted the UFS root and panicked in bsd_init
+("rootvp not authenticated after mounting"), because on a non-macOS target the
+FSIOC_KERNEL_ROOTAUTH check passes only through the owner authorization the chain
+provides. The binding object supplies native_verified_block_root_authorized, which
+bsd_init consults through the offline-owner-root-binding-audit patch; it answers
+from native_ufs_block_authenticates in the driver object. The catalog ShengUfs
+component is therefore not selected; CONFIG_XNU_NATIVE_UFS=y keeps the native
+personality and build-xnu-4k-baseline.sh force-loads this archive from its fixed path.
+
+The compile replays the IOPlatformExpert compile record with the storage headers that
+prepare-storage-headers.py leaves in build/storage-abi/include, exactly like
+build-fuxi-ram-block.py, and audits NativeUfsBlock's IOBlockStorageDevice imports
+against the kernelcache addresses in scripts/fuxi_storage_abi.py the same way. The
+alias definitions themselves are emitted once per kernel, by the RAM block build:
+defining them here too gave duplicate symbols at the kernel link (Build #28).
+"""
+import hashlib
+import json
+from pathlib import Path
+import re
+import struct
+import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]   # the assembled build tree: scripts are copied into it
+OUT = ROOT / 'build/sheng-ufs'
+OUT.mkdir(parents=True, exist_ok=True)
+sys.path.insert(0, str(ROOT / 'kits/XnuPrelink'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from native_prelink import macho
+from fuxi_storage_abi import BINDINGS, PURE, SLOTS, STORAGE_SLOTS
+
+KIT = ROOT / 'kits/fuxi/ufs'
+STORAGE_INCLUDE = ROOT / 'build/storage-abi/include'
+FLAGS = ['-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-Wno-c99-designator', '-Wno-reorder-init-list',
+         '-Wno-deprecated-enum-enum-conversion', '-Wno-unnecessary-virtual-specifier', '-mgeneral-regs-only',
+         '-I', ROOT / '.cache/xnu-work/osfmk', '-I', STORAGE_INCLUDE,
+         '-I', ROOT / 'kits/VerifiedRoot/include', '-DNATIVE_VERIFIED_BLOCK=1', '-DNATIVE_VERIFIED_BLOCK_MULTI_POLICY=1']
+
+
+def run(command, **kwargs):
+    return subprocess.check_output([str(v) for v in command], timeout=180, **kwargs)
+
+
+def require(value, message):
+    if not value:
+        raise SystemExit(message)
+
+
+require((STORAGE_INCLUDE / 'IOKit/storage/IOBlockStorageDevice.h').is_file(),
+        'build/storage-abi/include is missing: the kernel step prepares it from refer/IOStorageFamily')
+record = json.loads((ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/iokit/DEVELOPMENT/IOPlatformExpert.cpo.json').read_text().strip().rstrip(','))
+
+
+def compile_source(source, obj):
+    command, i, arguments = [], 0, record['arguments']
+    while i < len(arguments):
+        arg = arguments[i]
+        if arg == record['file']:
+            command.append(source)
+        elif arg == '-o':
+            command += ['-o', obj]
+            i += 1
+        elif arg in ('-MF', '-MT', '-MJ'):
+            i += 1
+        elif arg == '-Xclang' and arguments[i + 1].startswith('-W'):
+            i += 1
+        elif not arg.startswith('-W'):
+            command.append(arg)
+        i += 1
+    run(command + FLAGS, cwd=record['directory'])
+
+
+obj = OUT / 'NativeUfs.o'
+compile_source(KIT / 'NativeUfs.cpp', obj)
+raw = obj.read_bytes()
+info = macho(raw)
+require(info['kind'] == 1, 'Require actual ARM64 subtype-0 Mach-O object')
+build_version = [struct.unpack_from('<2I', raw, at + 8) for cmd, at, _ in info['commands'] if cmd == 0x32]
+require(build_version == [(2, 0x110000)], 'Require iOS17 build target')
+sym_at = next(at for cmd, at, _ in info['commands'] if cmd == 2)
+at, count, strings, _ = struct.unpack_from('<4I', raw, sym_at + 8)
+symbols = []
+for i in range(count):
+    ix, kind, _, _, address = struct.unpack_from('<IBBHQ', raw, at + i * 16)
+    symbols.append((raw[strings + ix:raw.index(b'\0', strings + ix)].decode(), address, kind))
+vtable = next(va for name, va, _ in symbols if name == '__ZTV14NativeUfsBlock')
+relocations = {}
+for segment in info['segments']:
+    for section in segment['sections']:
+        if section['va'] <= vtable < section['va'] + section['size']:
+            at, count = struct.unpack_from('<2I', raw, section['command_offset'] + 56)
+            for i in range(count):
+                offset, bits = struct.unpack_from('<2I', raw, at + i * 8)
+                if bits >> 27 & 1 and bits >> 28 == 0 and bits >> 25 & 3 == 3:
+                    relocations[section['va'] + offset] = symbols[bits & 0xffffff][0]
+entries = []
+while vtable + 16 + len(entries) * 8 in relocations and len(entries) < 280:
+    entries.append(relocations[vtable + 16 + len(entries) * 8])
+require(len(entries) >= SLOTS, 'NativeUfsBlock vtable is shorter than the IOBlockStorageDevice layout')
+require('___cxa_pure_virtual' not in entries, 'Concrete block class still has pure virtual methods')
+bindings = {}
+owned = []
+for slot, name in enumerate(entries):
+    if name.startswith(('__ZN14NativeUfsBlock', '__ZNK14NativeUfsBlock')):
+        owned.append(slot)
+    elif '20IOBlockStorageDevice' in name:
+        require(slot in STORAGE_SLOTS, f'IOBlockStorageDevice method at slot {slot} has no kernelcache implementation')
+        require(bindings.get(name, STORAGE_SLOTS[slot]) == STORAGE_SLOTS[slot], f'One address for {name}')
+        bindings[name] = STORAGE_SLOTS[slot]
+    else:
+        # Inherited from IOService: the linked table is compared with the original one the same way as the RAM block's.
+        require(slot < 168 and slot not in STORAGE_SLOTS, f'IOService method expected at slot {slot}, got {name}')
+require(set(PURE) <= set(owned) and {0, 1} <= set(owned), 'A required transport operation or the destructors are not implemented')
+undefined = {n for n, _, k in symbols if k == 1 and 'IOBlockStorageDevice' in n}
+# The abstract D1 and D0 of the original are brk traps: only the base D2 may be called.
+require(not any(re.search(r'IOBlockStorageDeviceD[01]Ev$', n) for n in undefined), 'Concrete driver must not invoke abstract destruction')
+for name in undefined - set(bindings):
+    require(name in BINDINGS, f'Unqualified original storage import {name}')
+    bindings[name] = BINDINGS[name]
+require(undefined == set(bindings), 'All and only actual original storage imports bound')
+# The original IOBlockStorageDevice aliases are defined exactly once per kernel, by
+# build-fuxi-ram-block.py's original-bindings.o (the same addresses, from
+# scripts/fuxi_storage_abi.py; the kernel build script states the same one-alias
+# rule for the virtio transport). Defining them here as well gave 17 duplicate
+# symbols at the kernel link in Build #28, so this archive carries only the driver
+# object and NativeUfs.o's audited imports resolve against the RAM block's aliases.
+# The audited set is still recorded in bindings.json below.
+# The board's root binding (package/SourceRootBinding.cpp, linked into the tree as
+# kits/fuxi/) supplies native_verified_block_root_authorized and its two companions,
+# which the owner-root bsd_init patch consults after mounting; it answers through
+# native_ufs_block_authenticates in the driver object above.
+binding_obj = OUT / 'SourceRootBinding.o'
+compile_source(ROOT / 'kits/fuxi/SourceRootBinding.cpp', binding_obj)
+binding_raw = binding_obj.read_bytes()
+binding_info = macho(binding_raw)
+require(binding_info['kind'] == 1, 'Require actual ARM64 subtype-0 Mach-O binding object')
+b_sym_at = next(at for cmd, at, _ in binding_info['commands'] if cmd == 2)
+b_at, b_count, b_strings, _ = struct.unpack_from('<4I', binding_raw, b_sym_at + 8)
+binding_defined = set()
+for i in range(b_count):
+    ix, kind, _, _, _ = struct.unpack_from('<IBBHQ', binding_raw, b_at + i * 16)
+    if kind != 1:
+        binding_defined.add(binding_raw[b_strings + ix:binding_raw.index(b'\0', b_strings + ix)].decode())
+for required in ('_native_verified_block_root_authorized', '_native_verified_block_manifest_sha384',
+                 '_native_verified_block_volume_device'):
+    require(required in binding_defined, f'SourceRootBinding object does not define {required}')
+archive = OUT / 'libShengUfs.a'
+archive.unlink(missing_ok=True)
+run(['xcrun', 'ar', 'rcs', archive, obj, binding_obj])
+report = {'source': 'kits/fuxi/ufs/NativeUfs.cpp', 'verified_block': True,
+          'compiled_object_sha256': hashlib.sha256(raw).hexdigest(),
+          'binding_object_sha256': hashlib.sha256(binding_raw).hexdigest(),
+          'original_slots': len(entries), 'owned_slots': owned,
+          'bindings': {name: hex(va) for name, va in sorted(bindings.items())}}
+(OUT / 'bindings.json').write_text(json.dumps(report, indent=2) + '\n')
+print(f'PASS: NativeUfsBlock {len(owned)} own slots, {len(bindings)} original storage imports bound; archive {archive.relative_to(ROOT)}')

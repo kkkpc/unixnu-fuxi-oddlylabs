@@ -1,1 +1,247 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwoiIiJHZW5lcmF0ZSB0aGlzIGJvYXJkJ3Mgb3duZXItcm9vdCBwb2xpY2llcyBhbmQgdGhlIHByb2JlIGJ1bmRsZSBhcmNoaXZlLCBpbi10cmVlLgoKVGhpcyBydW5zIGZpcnN0IGluIHRoZSBib2FyZCdzIGtlcm5lbCBhcmNoaXZlIG9yZGVyIChzZWUgYm9hcmQudG9tbCksIG9uIHRoZSBtYWNPUwpidWlsZCBob3N0LCBiZWZvcmUgYW55IGNvbXBpbGluZzogYSBwb2xpY3kgZmFpbHVyZSBzdG9wcyB0aGUgYnVpbGQgaGVyZSBpbnN0ZWFkIG9mCmF0IHRoZSBrZXJuZWwgbGluay4gQ09ORklHX1hOVV9WRVJJRklFRF9ST09UX1BST0JFIG1ha2VzIGJ1aWxkLXhudS00ay1iYXNlbGluZS5zaApmb3JjZS1sb2FkIGJ1aWxkL3ZlcmlmaWVkLXJvb3Qtb3MteG51LWJ1bmRsZS9saWJWZXJpZmllZFJvb3RQcm9iZS5hOyB0aGF0IGFyY2hpdmUKY2FycmllcyBib3RoIHRoZSBzaWduZWQgcGVyLXZvbHVtZSBwb2xpY2llcyAodmVyaWZpZWRfcm9vdF9wb2xpY2llcyAvCnZlcmlmaWVkX3Jvb3Rfa2V5LCB3aGljaCB0aGUgVUZTIGRyaXZlciB2ZXJpZmllcyBldmVyeSByb290IHJlYWQgYWdhaW5zdCkgYW5kIHRoZQpWZXJpZmllZFJvb3Qga2l0J3MgdnJfKiBpbXBsZW1lbnRhdGlvbiB0aGUgZHJpdmVyIGNhbGxzLCBhbmQKc2NyaXB0cy9idWlsZC12ZXJpZmllZC1yb290LXByb2JlLnB5IGlzIGl0cyBvbmx5IGJ1aWxkZXIuCgpUaGUgcGlwZWxpbmUgaXMgVW5pWE5VJ3Mgb3duLCBmcm96ZW4gdG8gdGhlIElQU1cgcGF5bG9hZCByYXRoZXIgdGhhbiB0byBhbnkgYm9hcmQ6CnRoZSBleHBlY3RlZCB2b2x1bWUgVVVJRHMgYW5kIGltYWdlIGRpZ2VzdHMgaW4gaXRzIHNjcmlwdHMgYXJlIHRoaXMgaVBhZE9TCjE3LjcuMTEgaW1hZ2UncyBvd24gY29uc3RhbnRzLiBUaGUgdHdvIHZvbHVtZSBpbWFnZXMgYXJlIGV4dHJhY3RlZCBmcm9tIHRoZSBJUFNXCm92ZXIgSFRUUCByYW5nZSByZXF1ZXN0cyBpbnRvIHRoZSBmaXJtd2FyZSBjYWNoZSB0aGUgVW5pWE5VIHNjcmlwdHMgcmVhZCAob25seQp0aGUgbWVtYmVycyB0aGlzIHBpcGVsaW5lIG5lZWRzOyBib3RoIGRpZ2VzdHMgYXJlIGFzc2VydGVkIGFnYWluc3QgdGhlaXIgcGlucykuClRoZSBPUyBwb2xpY3kgaXMgc2lnbmVkIGJ5IFVuaVhOVSdzIHNjcmlwdHMvYnVpbGQtb3duZXItb3MtcG9saWN5LnB5IGl0c2VsZiwKb3ZlciB0aGUgT1Mgdm9sdW1lIGF0dGFjaGVkIHJlYWQtb25seSB3aXRoIGhkaXV0aWwgZXhhY3RseSBhcyB0aGF0IHNjcmlwdApyZXF1aXJlcyAoaXQgcmUtdmFsaWRhdGVzIHRoZSBhdHRhY2htZW50LCB0aGUgd2hvbGUtZGlzayBzaXplIGFuZCB0aGUgdm9sdW1lClVVSUQgYmVmb3JlIHNpZ25pbmcpLiBUaGUgU3lzdGVtT1MgcG9saWN5IGlzIG1hZGUgd2l0aApraXRzL1ZlcmlmaWVkUm9vdC90b29scy9tYW5pZmVzdC5weSBkaXJlY3RseSBvdmVyIHRoZSByYXcgU3lzdGVtT1MgaW1hZ2UgKHRoZQowNDQtNzYwMzQtMDM4LmRtZyBtZW1iZXIgaXMgdGhlIHJhdyBBUEZTIHZvbHVtZSBpbWFnZSksIHdpdGggdGhlIE9TIHNjcmlwdCdzCnZlcmlmaWNhdGlvbiBzdGVwcyBtaXJyb3JlZCBzbyB0aGUgcHJvYmUgYnVpbGRlciBmaW5kcyB0aGUgc2FtZQp2ZXJpZmljYXRpb24uanNvbiBzaGFwZSBmb3IgYm90aCB2b2x1bWVzLiBUaGUgaG9zdCB2ZXJpZmljYXRpb24gbGlicmFyeSBpcwpjb21waWxlZCB0aGUgd2F5IGtpdHMvVmVyaWZpZWRSb290L3Rlc3RzL2NoZWNrLnB5IGJ1aWxkcyBpdCwgYWdhaW5zdCB0aGUKSG9tZWJyZXcgb3BlbnNzbEAzIHRoZSBpbWFnZSBqb2IgaW5zdGFsbHMuCgpUaGUgb3duZXIga2V5cGFpciAoUlNBLTMwNzIsIGV4cG9uZW50IDY1NTM3LCBhcyBtYW5pZmVzdC5weSdzIHB1YmxpY19hbmNob3IKcmVxdWlyZXMpIGlzIGdlbmVyYXRlZCBmcmVzaCBpbnRvIGJ1aWxkL3ZlcmlmaWVkLXJvb3QtaG9zdC8gb24gZXZlcnkgYnVpbGQ6IHRoZQpwb2xpY2llcywgdGhlIGJ1bmRsZSBhbmQgdGhlIHRydXN0ZWQga2V5IGVtYmVkZGVkIGluIHRoZSBrZXJuZWwgYXJlIGFsbCBwcm9kdWNlZAphbmQgY29uc3VtZWQgd2l0aGluIHRoZSBzYW1lIGJ1aWxkLCBzbyBubyBrZXkgbWF0ZXJpYWwgcGVyc2lzdHMgb3IgaXMKY29tbWl0dGVkLCBhbmQgdGhlIHBvbGljaWVzIGFyZSB0aGUgZnVsbCBmb3JtIChzaWduZWQgaGVhZGVyIHBsdXMgdGhlIGNvbXBsZXRlCmhhc2ggdGFibGUpLCBzbyB0aGUga2VybmVsIGNhcnJpZXMgdGhlIHRhYmxlcyBhbmQgdGhlIGZsYXNoZWQgcm9vdCBpbWFnZSBzdGF5cwp0aGUgdmVyc2lvbi0xIHR3by13aW5kb3cgbGF5b3V0IFVuaVhOVS1zaGVuZydzIGxhdGVyIGhlYWRlci1vbmx5IGZvcm0gd291bGQKbmVlZCAiLnZyb290IiBvYmplY3RzIGluIGEgdmVyc2lvbi0yIHJvb3QgaW1hZ2UgdG8gcmVwbGFjZS4KIiIiCmltcG9ydCBjdHlwZXMKaW1wb3J0IGhhc2hsaWIKaW1wb3J0IGltcG9ydGxpYi51dGlsCmltcG9ydCBpbwppbXBvcnQganNvbgpmcm9tIHBhdGhsaWIgaW1wb3J0IFBhdGgKaW1wb3J0IHBsaXN0bGliCmltcG9ydCBzaHV0aWwKaW1wb3J0IHN1YnByb2Nlc3MKaW1wb3J0IHN5cwppbXBvcnQgdXJsbGliLnJlcXVlc3QKaW1wb3J0IHV1aWQKaW1wb3J0IHppcGZpbGUKClJPT1QgPSBQYXRoKF9fZmlsZV9fKS5yZXNvbHZlKCkucGFyZW50c1sxXSAgICMgdGhlIGFzc2VtYmxlZCBidWlsZCB0cmVlOiBzY3JpcHRzIGFyZSBjb3BpZWQgaW50byBpdApUQVJHRVRTID0gUk9PVCAvICcuY2FjaGUvZmlybXdhcmUvdGFyZ2V0LXZvbHVtZXMnCk9TX0RNRyA9IFRBUkdFVFMgLyAnMDQ0LTc2MDQwLTAzOC5kbWcnClNZU1RFTU9TX0RNRyA9IFRBUkdFVFMgLyAnMDQ0LTc2MDM0LTAzOC5kbWcnCk9TX0RNR19TSEEyNTYgPSAnM2Y5OWI4NTljOTcyODM3OTExMGI2NjY1N2M3YjE1Mjg1YmNiMTkyNWFkOGI1NzI2NTQyZTJjZGNmOGIxMDI4ZCcKU1lTVEVNT1NfSU1BR0VfU0hBMjU2ID0gJ2I0OTA4Y2RlNDFkMjNlNmJjMDVlNmFmNTFhMmM5ZWViMDBjZjBmODYzYTZhMThiMTYwMGM5NmEzZmQ3MDQxNGYnCk9TX1VVSUQgPSAnMDQ3NjlEMjYtMkNBMC00ODI1LUI0NDMtRTJFNUY4ODMwMEYyJwpTWVNURU1PU19VVUlEID0gJzg4NDZGRTc4LTI5MTAtNDI5Ny1BRjk3LUQ1OUJCNkY4RkMxNicKU1lTVEVNT1NfQllURVMgPSAzMzAzMDE0NDAwCklQU1dfVVJMID0gKCdodHRwczovL3VwZGF0ZXMuY2RuLWFwcGxlLmNvbS8yMDI1U3ByaW5nRkNTL2Z1bGxyZXN0b3Jlcy8xMjItNzcxNjYvJwogICAgICAgICAgICAnRENBNkNGRTgtOTBFOS00QjkyLTg4MEQtM0RFMTcxNzk4RTQwL2lQYWRfUHJvX0hGUl8xNy43LjExXzIxSDQ2MV9SZXN0b3JlLmlwc3cnKQpIT1NUID0gUk9PVCAvICdidWlsZC92ZXJpZmllZC1yb290LWhvc3QnCktFWVMgPSBIT1NUIC8gJ2tleXMnCkJVTkRMRSA9IFJPT1QgLyAnYnVpbGQvdmVyaWZpZWQtcm9vdC1vcy14bnUtYnVuZGxlL2xpYlZlcmlmaWVkUm9vdFByb2JlLmEnCgoKZGVmIHJ1bihjb21tYW5kLCAqKmt3YXJncyk6CiAgICBwcmludCgnKycsICcgJy5qb2luKHN0cih2KSBmb3IgdiBpbiBjb21tYW5kKSwgZmx1c2g9VHJ1ZSkKICAgIHJldHVybiBzdWJwcm9jZXNzLnJ1bihbc3RyKHYpIGZvciB2IGluIGNvbW1hbmRdLCBjaGVjaz1UcnVlLCAqKmt3YXJncykKCgpkZWYgcmVxdWlyZSh2YWx1ZSwgbWVzc2FnZSk6CiAgICBpZiBub3QgdmFsdWU6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChtZXNzYWdlKQoKCmRlZiBzaGEyNTYocGF0aCk6CiAgICBkaWdlc3QgPSBoYXNobGliLnNoYTI1NigpCiAgICB3aXRoIHBhdGgub3BlbigncmInKSBhcyBzdHJlYW06CiAgICAgICAgZm9yIGRhdGEgaW4gaXRlcihsYW1iZGE6IHN0cmVhbS5yZWFkKDEwMjQgKiAxMDI0KSwgYicnKToKICAgICAgICAgICAgZGlnZXN0LnVwZGF0ZShkYXRhKQogICAgcmV0dXJuIGRpZ2VzdC5oZXhkaWdlc3QoKQoKCmNsYXNzIFJhbmdlRmlsZShpby5SYXdJT0Jhc2UpOgogICAgIiIiQSBzZWVrYWJsZSByZWFkLW9ubHkgdmlldyBvZiBhIHJlbW90ZSBmaWxlIG92ZXIgSFRUUCByYW5nZSByZXF1ZXN0cy4iIiIKCiAgICBCTE9DSyA9IDggKiAxMDI0ICogMTAyNAoKICAgIGRlZiBfX2luaXRfXyhzZWxmLCB1cmwpOgogICAgICAgIHNlbGYudXJsID0gdXJsCiAgICAgICAgcmVxdWVzdCA9IHVybGxpYi5yZXF1ZXN0LlJlcXVlc3QodXJsLCBtZXRob2Q9J0hFQUQnKQogICAgICAgIHdpdGggdXJsbGliLnJlcXVlc3QudXJsb3BlbihyZXF1ZXN0KSBhcyByZXNwb25zZToKICAgICAgICAgICAgc2VsZi5zaXplID0gaW50KHJlc3BvbnNlLmhlYWRlcnNbJ0NvbnRlbnQtTGVuZ3RoJ10pCiAgICAgICAgc2VsZi5wb3NpdGlvbiA9IDAKICAgICAgICBzZWxmLmNhY2hlID0ge30KCiAgICBkZWYgc2Vla2FibGUoc2VsZik6CiAgICAgICAgcmV0dXJuIFRydWUKCiAgICBkZWYgc2VlayhzZWxmLCBvZmZzZXQsIHdoZW5jZT1pby5TRUVLX1NFVCk6CiAgICAgICAgc2VsZi5wb3NpdGlvbiA9IHtpby5TRUVLX1NFVDogb2Zmc2V0LCBpby5TRUVLX0NVUjogc2VsZi5wb3NpdGlvbiArIG9mZnNldCwKICAgICAgICAgICAgICAgICAgICAgICAgIGlvLlNFRUtfRU5EOiBzZWxmLnNpemUgKyBvZmZzZXR9W3doZW5jZV0KICAgICAgICByZXR1cm4gc2VsZi5wb3NpdGlvbgoKICAgIGRlZiB0ZWxsKHNlbGYpOgogICAgICAgIHJldHVybiBzZWxmLnBvc2l0aW9uCgogICAgZGVmIHJlYWRpbnRvKHNlbGYsIGJ1ZmZlcik6CiAgICAgICAgaWYgc2VsZi5wb3NpdGlvbiA+PSBzZWxmLnNpemU6CiAgICAgICAgICAgIHJldHVybiAwCiAgICAgICAgYmxvY2tfaW5kZXgsIG9mZnNldCA9IGRpdm1vZChzZWxmLnBvc2l0aW9uLCBzZWxmLkJMT0NLKQogICAgICAgIGlmIGJsb2NrX2luZGV4IG5vdCBpbiBzZWxmLmNhY2hlOgogICAgICAgICAgICBpZiBsZW4oc2VsZi5jYWNoZSkgPiA0OgogICAgICAgICAgICAgICAgc2VsZi5jYWNoZS5jbGVhcigpCiAgICAgICAgICAgIHN0YXJ0ID0gYmxvY2tfaW5kZXggKiBzZWxmLkJMT0NLCiAgICAgICAgICAgIHJlcXVlc3QgPSB1cmxsaWIucmVxdWVzdC5SZXF1ZXN0KHNlbGYudXJsLCBoZWFkZXJzPXsnUmFuZ2UnOiBmJ2J5dGVzPXtzdGFydH0te3N0YXJ0ICsgc2VsZi5CTE9DSyAtIDF9J30pCiAgICAgICAgICAgIHdpdGggdXJsbGliLnJlcXVlc3QudXJsb3BlbihyZXF1ZXN0KSBhcyByZXNwb25zZToKICAgICAgICAgICAgICAgIHNlbGYuY2FjaGVbYmxvY2tfaW5kZXhdID0gcmVzcG9uc2UucmVhZCgpCiAgICAgICAgYmxvY2sgPSBzZWxmLmNhY2hlW2Jsb2NrX2luZGV4XQogICAgICAgIHRha2UgPSBtaW4obGVuKGJ1ZmZlciksIGxlbihibG9jaykgLSBvZmZzZXQsIHNlbGYuc2l6ZSAtIHNlbGYucG9zaXRpb24pCiAgICAgICAgYnVmZmVyWzp0YWtlXSA9IGJsb2NrW29mZnNldDpvZmZzZXQgKyB0YWtlXQogICAgICAgIHNlbGYucG9zaXRpb24gKz0gdGFrZQogICAgICAgIHJldHVybiB0YWtlCgoKIyAtLS0gRXh0cmFjdCB0aGUgdHdvIHZvbHVtZSBpbWFnZXMgdGhlIHBpcGVsaW5lIHJlYWRzIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQpUQVJHRVRTLm1rZGlyKHBhcmVudHM9VHJ1ZSwgZXhpc3Rfb2s9VHJ1ZSkKZm9yIHBhdGgsIGV4cGVjdGVkIGluICgoT1NfRE1HLCBPU19ETUdfU0hBMjU2KSwgKFNZU1RFTU9TX0RNRywgU1lTVEVNT1NfSU1BR0VfU0hBMjU2KSk6CiAgICBpZiBwYXRoLmlzX2ZpbGUoKSBhbmQgc2hhMjU2KHBhdGgpID09IGV4cGVjdGVkOgogICAgICAgIGNvbnRpbnVlCiAgICBwcmludChmJ2V4dHJhY3Rpbmcge3BhdGgubmFtZX0gZnJvbSB0aGUgSVBTVyAocmFuZ2UgcmVxdWVzdHMpJykKICAgIHdpdGggemlwZmlsZS5aaXBGaWxlKFJhbmdlRmlsZShJUFNXX1VSTCkpIGFzIGFyY2hpdmU6CiAgICAgICAgbWVtYmVyID0gbmV4dChuYW1lIGZvciBuYW1lIGluIGFyY2hpdmUubmFtZWxpc3QoKSBpZiBQYXRoKG5hbWUpLm5hbWUgPT0gcGF0aC5uYW1lKQogICAgICAgIHdpdGggYXJjaGl2ZS5vcGVuKG1lbWJlcikgYXMgc291cmNlLCBwYXRoLm9wZW4oJ3diJykgYXMgdGFyZ2V0OgogICAgICAgICAgICBzaHV0aWwuY29weWZpbGVvYmooc291cmNlLCB0YXJnZXQsIDEwMjQgKiAxMDI0KQogICAgcmVxdWlyZShzaGEyNTYocGF0aCkgPT0gZXhwZWN0ZWQsIGYne3BhdGgubmFtZX0gZGlnZXN0IGRpZmZlcnMgZnJvbSBpdHMgcGluIGFmdGVyIGV4dHJhY3Rpb24nKQoKIyAtLS0gSG9zdCBraXQ6IG93bmVyIGtleXBhaXIgKyB0aGUgQyB2ZXJpZmljYXRpb24gbGlicmFyeSAtLS0tLS0tLS0tLS0tLS0tLS0tLQpLRVlTLm1rZGlyKHBhcmVudHM9VHJ1ZSwgZXhpc3Rfb2s9VHJ1ZSkKaWYgbm90IChLRVlTIC8gJ293bmVyLnBlbScpLmlzX2ZpbGUoKToKICAgIHJ1bihbJ29wZW5zc2wnLCAnZ2VucGtleScsICctYWxnb3JpdGhtJywgJ1JTQScsICctcGtleW9wdCcsICdyc2Ffa2V5Z2VuX2JpdHM6MzA3MicsCiAgICAgICAgICctcGtleW9wdCcsICdyc2Ffa2V5Z2VuX3B1YmV4cDo2NTUzNycsICctb3V0JywgS0VZUyAvICdvd25lci5wZW0nXSkKICAgIHJ1bihbJ29wZW5zc2wnLCAncGtleScsICctaW4nLCBLRVlTIC8gJ293bmVyLnBlbScsICctcHVib3V0JywgJy1vdXQnLCBLRVlTIC8gJ293bmVyLXB1YmxpYy5wZW0nXSkKcHJlZml4ID0gUGF0aChzdWJwcm9jZXNzLmNoZWNrX291dHB1dChbJ2JyZXcnLCAnLS1wcmVmaXgnLCAnb3BlbnNzbEAzJ10sIHRleHQ9VHJ1ZSkuc3RyaXAoKSkKbGlicmFyeSA9IEhPU1QgLyAndmVyaWZpZWQtcm9vdC5keWxpYicKcnVuKFsneGNydW4nLCAnY2xhbmcnLCAnLXN0ZD1jMTEnLCAnLVdhbGwnLCAnLVdleHRyYScsICctV2Vycm9yJywgJy1keW5hbWljbGliJywKICAgICAnLUknLCBST09UIC8gJ2tpdHMvVmVyaWZpZWRSb290L2luY2x1ZGUnLCAnLUknLCBwcmVmaXggLyAnaW5jbHVkZScsCiAgICAgUk9PVCAvICdraXRzL1ZlcmlmaWVkUm9vdC9zcmMvdmVyaWZpZWRfcm9vdC5jJywgUk9PVCAvICdraXRzL1ZlcmlmaWVkUm9vdC90ZXN0cy9vcGVuc3NsX3Byb3ZpZGVyLmMnLAogICAgICctTCcsIHByZWZpeCAvICdsaWInLCAnLWxjcnlwdG8nLCAnLW8nLCBsaWJyYXJ5XSkKCiMgLS0tIE9TIHBvbGljeTogYXR0YWNoIHJlYWQtb25seSwgdGhlbiBVbmlYTlUncyBvd24gcG9saWN5IHNjcmlwdCAtLS0tLS0tLS0tLS0KIyBidWlsZC1vd25lci1vcy1wb2xpY3kucHkgZXhwZWN0cyB0aGUgT1MgKFN5c3RlbSkgdm9sdW1lIG1vdW50ZWQgYXQKIyAuY2FjaGUvZmlybXdhcmUvdGFyZ2V0LXZvbHVtZXMvb3MtbW91bnQgYW5kIHJlLXZhbGlkYXRlcyB0aGUgYXR0YWNobWVudCBpdHNlbGYKIyAod2hvbGUtZGlzayBzaXplLCB2b2x1bWUgVVVJRCwgcmVhZC1vbmx5KSBiZWZvcmUgc2lnbmluZyBhbnl0aGluZy4gVGhlIGRtZwojIGNhcnJpZXMgYSB3aG9sZSBBUEZTIGNvbnRhaW5lciwgc28gYXR0YWNoIGl0IHBsYWlubHksIGZpbmQgdGhlIG1vdW50ZWQgdm9sdW1lCiMgd2hvc2UgZGlza3V0aWwgVm9sdW1lVVVJRCBpcyB0aGUgU3lzdGVtIHZvbHVtZSdzLCBhbmQgcG9pbnQgb3MtbW91bnQgYXQgaXQuCm1vdW50ID0gVEFSR0VUUyAvICdvcy1tb3VudCcKd2hvbGVfZGV2aWNlID0gTm9uZQp0cnk6CiAgICBydW4oWydoZGl1dGlsJywgJ2F0dGFjaCcsICctcmVhZG9ubHknLCAnLW5vYnJvd3NlJywgT1NfRE1HXSkKICAgIGluZm8gPSBwbGlzdGxpYi5sb2FkcyhzdWJwcm9jZXNzLmNoZWNrX291dHB1dChbJ2hkaXV0aWwnLCAnaW5mbycsICctcGxpc3QnXSkpCiAgICBlbnRpdGllcyA9IG5leHQoZnJhbWV3b3JrWydzeXN0ZW0tZW50aXRpZXMnXSBmb3IgZnJhbWV3b3JrIGluIGluZm9bJ2ltYWdlcyddCiAgICAgICAgICAgICAgICAgICAgaWYgZnJhbWV3b3JrLmdldCgnaW1hZ2UtcGF0aCcpID09IHN0cihPU19ETUcpKQogICAgd2hvbGVfZGV2aWNlID0gbmV4dCgoZVsnZGV2LWVudHJ5J10gZm9yIGUgaW4gZW50aXRpZXMgaWYgZS5nZXQoJ2NvbnRlbnQtaGludCcpID09ICdHVUlEX3BhcnRpdGlvbl9zY2hlbWUnKSwgTm9uZSkKICAgIHN5c3RlbV9tb3VudCA9IE5vbmUKICAgIGZvciBlbnRpdHkgaW4gZW50aXRpZXM6CiAgICAgICAgaWYgJ21vdW50LXBvaW50JyBub3QgaW4gZW50aXR5OgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIHZvbHVtZSA9IHBsaXN0bGliLmxvYWRzKHN1YnByb2Nlc3MuY2hlY2tfb3V0cHV0KAogICAgICAgICAgICBbJ2Rpc2t1dGlsJywgJ2luZm8nLCAnLXBsaXN0JywgZW50aXR5Wydtb3VudC1wb2ludCddXSkpCiAgICAgICAgaWYgdm9sdW1lLmdldCgnVm9sdW1lVVVJRCcpID09IE9TX1VVSUQ6CiAgICAgICAgICAgIHN5c3RlbV9tb3VudCA9IGVudGl0eVsnbW91bnQtcG9pbnQnXQogICAgICAgICAgICBicmVhawogICAgcmVxdWlyZShzeXN0ZW1fbW91bnQsICdBdHRhY2hlZCBPUyBpbWFnZSBoYXMgbm8gbW91bnRlZCB2b2x1bWUgd2l0aCB0aGUgU3lzdGVtIHZvbHVtZSBVVUlEJykKICAgIGlmIG1vdW50LmlzX3N5bWxpbmsoKSBvciBtb3VudC5pc19maWxlKCk6CiAgICAgICAgbW91bnQudW5saW5rKCkKICAgIGVsaWYgbW91bnQuaXNfZGlyKCk6CiAgICAgICAgbW91bnQucm1kaXIoKQogICAgbW91bnQuc3ltbGlua190byhzeXN0ZW1fbW91bnQpCiAgICBydW4oW3N5cy5leGVjdXRhYmxlLCBST09UIC8gJ3NjcmlwdHMvYnVpbGQtb3duZXItb3MtcG9saWN5LnB5J10sIGN3ZD1ST09UKQpmaW5hbGx5OgogICAgaWYgbW91bnQuaXNfc3ltbGluaygpOgogICAgICAgIG1vdW50LnVubGluaygpCiAgICBpZiB3aG9sZV9kZXZpY2U6CiAgICAgICAgc3VicHJvY2Vzcy5ydW4oWydoZGl1dGlsJywgJ2RldGFjaCcsIHdob2xlX2RldmljZV0sIGNoZWNrPUZhbHNlKQoKIyAtLS0gU3lzdGVtT1MgcG9saWN5OiBtYW5pZmVzdC5tYWtlIG92ZXIgdGhlIHJhdyBpbWFnZSArIEMgdmVyaWZpY2F0aW9uIC0tLS0tLQpzcGVjID0gaW1wb3J0bGliLnV0aWwuc3BlY19mcm9tX2ZpbGVfbG9jYXRpb24oJ3ZlcmlmaWVkX21hbmlmZXN0JywgUk9PVCAvICdraXRzL1ZlcmlmaWVkUm9vdC90b29scy9tYW5pZmVzdC5weScpCm1hbmlmZXN0X21vZHVsZSA9IGltcG9ydGxpYi51dGlsLm1vZHVsZV9mcm9tX3NwZWMoc3BlYykKc3BlYy5sb2FkZXIuZXhlY19tb2R1bGUobWFuaWZlc3RfbW9kdWxlKQpvdXQgPSBST09UIC8gJ2J1aWxkL3ZlcmlmaWVkLXJvb3Qtc3lzdGVtb3MnCndpdGggU1lTVEVNT1NfRE1HLm9wZW4oJ3JiJywgYnVmZmVyaW5nPTEwMjQgKiAxMDI0KSBhcyBzdHJlYW06CiAgICByZWNvcmQgPSBtYW5pZmVzdF9tb2R1bGUubWFrZShzdHJlYW0sIFNZU1RFTU9TX0JZVEVTLCBLRVlTIC8gJ293bmVyLnBlbScsIEtFWVMgLyAnb3duZXItcHVibGljLnBlbScsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBTWVNURU1PU19VVUlELCAxLCBvdXQpCnJlcXVpcmUocmVjb3JkWydpbWFnZV9zaGEyNTYnXSA9PSBTWVNURU1PU19JTUFHRV9TSEEyNTYsICdTeXN0ZW1PUyBwb2xpY3kgaW1hZ2UgZGlnZXN0IG1pc21hdGNoJykKCgpjbGFzcyBWaWV3KGN0eXBlcy5TdHJ1Y3R1cmUpOgogICAgX2ZpZWxkc18gPSBbKCdoYXNoZXMnLCBjdHlwZXMuY192b2lkX3ApLCAoJ2ltYWdlX2J5dGVzJywgY3R5cGVzLmNfdWludDY0KSwgKCdibG9ja19jb3VudCcsIGN0eXBlcy5jX3VpbnQ2NCksCiAgICAgICAgICAgICAgICAoJ2dlbmVyYXRpb24nLCBjdHlwZXMuY191aW50NjQpLCAoJ3ZvbHVtZV91dWlkJywgY3R5cGVzLmNfdWludDggKiAxNiksICgnaW1hZ2Vfc2hhMjU2JywgY3R5cGVzLmNfdWludDggKiAzMildCgoKbmF0aXZlID0gY3R5cGVzLkNETEwoc3RyKGxpYnJhcnkpKQpuYXRpdmUudnJfaG9zdF9vcGVuLmFyZ3R5cGVzID0gW2N0eXBlcy5jX3ZvaWRfcCwgY3R5cGVzLmNfc2l6ZV90LCBjdHlwZXMuY192b2lkX3AsIGN0eXBlcy5jX3VpbnQ2NCwgY3R5cGVzLlBPSU5URVIoVmlldyldCm5hdGl2ZS52cl9ob3N0X2Jsb2NrLmFyZ3R5cGVzID0gW2N0eXBlcy5QT0lOVEVSKFZpZXcpLCBjdHlwZXMuY191aW50NjQsIGN0eXBlcy5jX3ZvaWRfcCwgY3R5cGVzLmNfc2l6ZV90XQplbmNvZGVkID0gY3R5cGVzLmNyZWF0ZV9zdHJpbmdfYnVmZmVyKChvdXQgLyAnbWFuaWZlc3QuYmluJykucmVhZF9ieXRlcygpKQphbmNob3IgPSBjdHlwZXMuY3JlYXRlX3N0cmluZ19idWZmZXIoKG91dCAvICd0cnVzdGVkLWtleS5iaW4nKS5yZWFkX2J5dGVzKCkpCnZpZXcgPSBWaWV3KCkKaWYgbmF0aXZlLnZyX2hvc3Rfb3BlbihlbmNvZGVkLCBsZW4oZW5jb2RlZCkgLSAxLCBhbmNob3IsIDEsIGN0eXBlcy5ieXJlZih2aWV3KSkgb3IgXAogICAgICAgIGJ5dGVzKHZpZXcudm9sdW1lX3V1aWQpICE9IHV1aWQuVVVJRChTWVNURU1PU19VVUlEKS5ieXRlczoKICAgIHJhaXNlIFN5c3RlbUV4aXQoJ1N5c3RlbU9TOiByZWFsIEMgc2lnbmF0dXJlL3ZvbHVtZSBhdXRoZW50aWNhdGlvbiBmYWlsZWQnKQpjb21wbGV0ZSA9IGhhc2hsaWIuc2hhMjU2KCkKaW5kaWNlcyA9IFswLCAxLCB2aWV3LmJsb2NrX2NvdW50IC8vIDIsIHZpZXcuYmxvY2tfY291bnQgLSAxXQpzYW1wbGVzLCBsZW5ndGhzID0gW10sIFtdCndpdGggU1lTVEVNT1NfRE1HLm9wZW4oJ3JiJywgYnVmZmVyaW5nPTEwMjQgKiAxMDI0KSBhcyBzdHJlYW06CiAgICBmb3IgaW5kZXggaW4gcmFuZ2Uodmlldy5ibG9ja19jb3VudCk6CiAgICAgICAgYmxvY2sgPSBzdHJlYW0ucmVhZChtaW4oNDA5Niwgdmlldy5pbWFnZV9ieXRlcyAtIGluZGV4ICogNDA5NikpCiAgICAgICAgaWYgbmF0aXZlLnZyX2hvc3RfYmxvY2soY3R5cGVzLmJ5cmVmKHZpZXcpLCBpbmRleCwgYmxvY2ssIGxlbihibG9jaykpICE9IDA6CiAgICAgICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoZidTeXN0ZW1PUzogYWN0dWFsIEMgYmxvY2sgdmVyaWZpY2F0aW9uIGZhaWxlZCBhdCB7aW5kZXh9JykKICAgICAgICBjb21wbGV0ZS51cGRhdGUoYmxvY2spCiAgICAgICAgaWYgaW5kZXggaW4gaW5kaWNlczoKICAgICAgICAgICAgc2FtcGxlcy5hcHBlbmQoYmxvY2subGp1c3QoNDA5NiwgYidcMCcpKQogICAgICAgICAgICBsZW5ndGhzLmFwcGVuZChsZW4oYmxvY2spKQogICAgaWYgc3RyZWFtLnJlYWQoMSk6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdCgnU3lzdGVtT1MgaW1hZ2UgZXhjZWVkZWQgaXRzIGF1dGhlbnRpY2F0ZWQgZXhhY3QgYm91bmRzJykKaWYgY29tcGxldGUuZGlnZXN0KCkgIT0gYnl0ZXModmlldy5pbWFnZV9zaGEyNTYpIG9yIGNvbXBsZXRlLmhleGRpZ2VzdCgpICE9IHJlY29yZFsnaW1hZ2Vfc2hhMjU2J106CiAgICByYWlzZSBTeXN0ZW1FeGl0KCdTeXN0ZW1PUzogYWN0dWFsIGNvbXBsZXRlIGltYWdlIGRpZ2VzdCBkaWZmZXJzJykKKG91dCAvICdvcmlnaW5hbC1zYW1wbGVzLmJpbicpLndyaXRlX2J5dGVzKGInJy5qb2luKHNhbXBsZXMpKQpyZXBvcnQgPSBkaWN0KGltYWdlX2J5dGVzPWludCh2aWV3LmltYWdlX2J5dGVzKSwgYmxvY2tzX3ZlcmlmaWVkPWludCh2aWV3LmJsb2NrX2NvdW50KSwKICAgICAgICAgICAgICBpbWFnZV9zaGEyNTY9Y29tcGxldGUuaGV4ZGlnZXN0KCksIHZvbHVtZV91dWlkPVNZU1RFTU9TX1VVSUQsCiAgICAgICAgICAgICAgZ2VuZXJhdGlvbj1pbnQodmlldy5nZW5lcmF0aW9uKSwgc291cmNlX2NvbXByZXNzZWRfc2hhMjU2PVNZU1RFTU9TX0lNQUdFX1NIQTI1NiwKICAgICAgICAgICAgICBzb3VyY2VfZm9ybWF0PSdyYXcgQVBGUyB2b2x1bWUgaW1hZ2UnLCBob3N0X2J1c19wcm90b2NvbD0nZmlsZScsCiAgICAgICAgICAgICAgaG9zdF9tZWRpYV93cml0YWJsZT1GYWxzZSwgdHJ1c3RlZF9rZXlfc2hhMjU2PXJlY29yZFsndHJ1c3RlZF9rZXlfc2hhMjU2J10sCiAgICAgICAgICAgICAgYWN0dWFsX3NhbXBsZV9pbmRpY2VzPWluZGljZXMsIGFjdHVhbF9zYW1wbGVfbGVuZ3Rocz1sZW5ndGhzLAogICAgICAgICAgICAgIHJlYWxfY19zaWduYXR1cmVfYW5kX2Jsb2NrX3ZlcmlmaWNhdGlvbj1UcnVlLCBvcmlnaW5hbF9pbWFnZV9tb2RpZmllZD1GYWxzZSwKICAgICAgICAgICAgICBob3N0X29ubHk9VHJ1ZSwgYm9vdF9yb290X2F1dGhlbnRpY2F0ZWQ9RmFsc2UsIHFlbXVfdGVzdGVkPUZhbHNlLCBoYXJkd2FyZV90ZXN0ZWQ9RmFsc2UpCihvdXQgLyAndmVyaWZpY2F0aW9uLmpzb24nKS53cml0ZV90ZXh0KGpzb24uZHVtcHMocmVwb3J0LCBpbmRlbnQ9MikgKyAnXG4nKQpwcmludChmJ1BBU1M6IFN5c3RlbU9TIHNpZ25hdHVyZSBhbmQgZXZlcnkge3ZpZXcuYmxvY2tfY291bnR9IGJsb2NrIHZlcmlmaWVkIGJ5IHJlYWwgQy9SU0EnKQoKIyAtLS0gQnVuZGxlOiBVbmlYTlUncyBwcm9iZSBidWlsZGVyIHJlLXZlcmlmaWVzIGFuZCBjb21waWxlcyBib3RoIC0tLS0tLS0tLS0tLQpydW4oW3N5cy5leGVjdXRhYmxlLCBST09UIC8gJ3NjcmlwdHMvYnVpbGQtdmVyaWZpZWQtcm9vdC1wcm9iZS5weScsCiAgICAgJy0tY29tcG9uZW50JywgJ29zJywgJy0taW5jbHVkZS1zeXN0ZW1vcyddLCBjd2Q9Uk9PVCkKcmVxdWlyZShCVU5ETEUuaXNfZmlsZSgpLCBmJ1Byb2JlIGJ1bmRsZSBhcmNoaXZlIG1pc3NpbmcgYWZ0ZXIgaXRzIGJ1aWxkZXIgcmFuOiB7QlVORExFfScpCnJlcXVpcmUoKFJPT1QgLyAnYnVpbGQvdmVyaWZpZWQtcm9vdC1vcy92ZXJpZmljYXRpb24uanNvbicpLmlzX2ZpbGUoKSwgJ09TIHBvbGljeSB2ZXJpZmljYXRpb24gcmVwb3J0IG1pc3NpbmcnKQpwcmludChmJ1BBU1M6IG93bmVyLXJvb3QgcG9saWNpZXMgc2lnbmVkIGFuZCBidW5kbGUgY29tcGlsZWQ6IHtCVU5ETEUucmVsYXRpdmVfdG8oUk9PVCl9JykK
+#!/usr/bin/env python3
+"""Generate this board's owner-root policies and the probe bundle archive, in-tree.
+
+This runs first in the board's kernel archive order (see board.toml), on the macOS
+build host, before any compiling: a policy failure stops the build here instead of
+at the kernel link. CONFIG_XNU_VERIFIED_ROOT_PROBE makes build-xnu-4k-baseline.sh
+force-load build/verified-root-os-xnu-bundle/libVerifiedRootProbe.a; that archive
+carries both the signed per-volume policies (verified_root_policies /
+verified_root_key, which the UFS driver verifies every root read against) and the
+VerifiedRoot kit's vr_* implementation the driver calls, and
+scripts/build-verified-root-probe.py is its only builder.
+
+The pipeline is UniXNU's own, frozen to the IPSW payload rather than to any board:
+the expected volume UUIDs and image digests in its scripts are this iPadOS
+17.7.11 image's own constants. The two volume images are extracted from the IPSW
+over HTTP range requests into the firmware cache the UniXNU scripts read (only
+the members this pipeline needs; both digests are asserted against their pins).
+The OS policy is signed by UniXNU's scripts/build-owner-os-policy.py itself,
+over the OS volume attached read-only with hdiutil exactly as that script
+requires (it re-validates the attachment, the whole-disk size and the volume
+UUID before signing). The SystemOS policy is made with
+kits/VerifiedRoot/tools/manifest.py directly over the raw SystemOS image (the
+044-76034-038.dmg member is the raw APFS volume image), with the OS script's
+verification steps mirrored so the probe builder finds the same
+verification.json shape for both volumes. The host verification library is
+compiled the way kits/VerifiedRoot/tests/check.py builds it, against the
+Homebrew openssl@3 the image job installs.
+
+The owner keypair (RSA-3072, exponent 65537, as manifest.py's public_anchor
+requires) is generated fresh into build/verified-root-host/ on every build: the
+policies, the bundle and the trusted key embedded in the kernel are all produced
+and consumed within the same build, so no key material persists or is
+committed, and the policies are the full form (signed header plus the complete
+hash table), so the kernel carries the tables and the flashed root image stays
+the version-1 two-window layout UniXNU-sheng's later header-only form would
+need ".vroot" objects in a version-2 root image to replace.
+"""
+import ctypes
+import hashlib
+import importlib.util
+import io
+import json
+from pathlib import Path
+import plistlib
+import shutil
+import subprocess
+import sys
+import urllib.request
+import uuid
+import zipfile
+
+ROOT = Path(__file__).resolve().parents[1]   # the assembled build tree: scripts are copied into it
+TARGETS = ROOT / '.cache/firmware/target-volumes'
+OS_DMG = TARGETS / '044-76040-038.dmg'
+SYSTEMOS_DMG = TARGETS / '044-76034-038.dmg'
+OS_DMG_SHA256 = '3f99b859c9728379110b66657c7b15285bcb1925ad8b5726542e2cdcf8b1028d'
+SYSTEMOS_IMAGE_SHA256 = 'b4908cde41d23e6bc05e6af51a2c9eeb00cf0f863a6a18b1600c96a3fd70414f'
+OS_UUID = '04769D26-2CA0-4825-B443-E2E5F88300F2'
+SYSTEMOS_UUID = '8846FE78-2910-4297-AF97-D59BB6F8FC16'
+SYSTEMOS_BYTES = 3303014400
+IPSW_URL = ('https://updates.cdn-apple.com/2025SpringFCS/fullrestores/122-77166/'
+            'DCA6CFE8-90E9-4B92-880D-3DE171798E40/iPad_Pro_HFR_17.7.11_21H461_Restore.ipsw')
+HOST = ROOT / 'build/verified-root-host'
+KEYS = HOST / 'keys'
+BUNDLE = ROOT / 'build/verified-root-os-xnu-bundle/libVerifiedRootProbe.a'
+
+
+def run(command, **kwargs):
+    print('+', ' '.join(str(v) for v in command), flush=True)
+    return subprocess.run([str(v) for v in command], check=True, **kwargs)
+
+
+def require(value, message):
+    if not value:
+        raise SystemExit(message)
+
+
+def sha256(path):
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        for data in iter(lambda: stream.read(1024 * 1024), b''):
+            digest.update(data)
+    return digest.hexdigest()
+
+
+class RangeFile(io.RawIOBase):
+    """A seekable read-only view of a remote file over HTTP range requests."""
+
+    BLOCK = 8 * 1024 * 1024
+
+    def __init__(self, url):
+        self.url = url
+        request = urllib.request.Request(url, method='HEAD')
+        with urllib.request.urlopen(request) as response:
+            self.size = int(response.headers['Content-Length'])
+        self.position = 0
+        self.cache = {}
+
+    def seekable(self):
+        return True
+
+    def seek(self, offset, whence=io.SEEK_SET):
+        self.position = {io.SEEK_SET: offset, io.SEEK_CUR: self.position + offset,
+                         io.SEEK_END: self.size + offset}[whence]
+        return self.position
+
+    def tell(self):
+        return self.position
+
+    def readinto(self, buffer):
+        if self.position >= self.size:
+            return 0
+        block_index, offset = divmod(self.position, self.BLOCK)
+        if block_index not in self.cache:
+            if len(self.cache) > 4:
+                self.cache.clear()
+            start = block_index * self.BLOCK
+            request = urllib.request.Request(self.url, headers={'Range': f'bytes={start}-{start + self.BLOCK - 1}'})
+            with urllib.request.urlopen(request) as response:
+                self.cache[block_index] = response.read()
+        block = self.cache[block_index]
+        take = min(len(buffer), len(block) - offset, self.size - self.position)
+        buffer[:take] = block[offset:offset + take]
+        self.position += take
+        return take
+
+
+# --- Extract the two volume images the pipeline reads ------------------------
+TARGETS.mkdir(parents=True, exist_ok=True)
+for path, expected in ((OS_DMG, OS_DMG_SHA256), (SYSTEMOS_DMG, SYSTEMOS_IMAGE_SHA256)):
+    if path.is_file() and sha256(path) == expected:
+        continue
+    print(f'extracting {path.name} from the IPSW (range requests)')
+    with zipfile.ZipFile(RangeFile(IPSW_URL)) as archive:
+        member = next(name for name in archive.namelist() if Path(name).name == path.name)
+        with archive.open(member) as source, path.open('wb') as target:
+            shutil.copyfileobj(source, target, 1024 * 1024)
+    require(sha256(path) == expected, f'{path.name} digest differs from its pin after extraction')
+
+# --- Host kit: owner keypair + the C verification library --------------------
+KEYS.mkdir(parents=True, exist_ok=True)
+if not (KEYS / 'owner.pem').is_file():
+    run(['openssl', 'genpkey', '-algorithm', 'RSA', '-pkeyopt', 'rsa_keygen_bits:3072',
+         '-pkeyopt', 'rsa_keygen_pubexp:65537', '-out', KEYS / 'owner.pem'])
+    run(['openssl', 'pkey', '-in', KEYS / 'owner.pem', '-pubout', '-out', KEYS / 'owner-public.pem'])
+prefix = Path(subprocess.check_output(['brew', '--prefix', 'openssl@3'], text=True).strip())
+library = HOST / 'verified-root.dylib'
+run(['xcrun', 'clang', '-std=c11', '-Wall', '-Wextra', '-Werror', '-dynamiclib',
+     '-I', ROOT / 'kits/VerifiedRoot/include', '-I', prefix / 'include',
+     ROOT / 'kits/VerifiedRoot/src/verified_root.c', ROOT / 'kits/VerifiedRoot/tests/openssl_provider.c',
+     '-L', prefix / 'lib', '-lcrypto', '-o', library])
+
+# --- OS policy: attach read-only, then UniXNU's own policy script ------------
+# build-owner-os-policy.py expects the OS (System) volume mounted at
+# .cache/firmware/target-volumes/os-mount and re-validates the attachment itself
+# (whole-disk size, volume UUID, read-only) before signing anything. The dmg
+# carries a whole APFS container, so attach it plainly, find the mounted volume
+# whose diskutil VolumeUUID is the System volume's, and point os-mount at it.
+mount = TARGETS / 'os-mount'
+whole_device = None
+try:
+    run(['hdiutil', 'attach', '-readonly', '-nobrowse', OS_DMG])
+    info = plistlib.loads(subprocess.check_output(['hdiutil', 'info', '-plist']))
+    entities = next(framework['system-entities'] for framework in info['images']
+                    if framework.get('image-path') == str(OS_DMG))
+    whole_device = next((e['dev-entry'] for e in entities if e.get('content-hint') == 'GUID_partition_scheme'), None)
+    system_mount = None
+    for entity in entities:
+        if 'mount-point' not in entity:
+            continue
+        volume = plistlib.loads(subprocess.check_output(
+            ['diskutil', 'info', '-plist', entity['mount-point']]))
+        if volume.get('VolumeUUID') == OS_UUID:
+            system_mount = entity['mount-point']
+            break
+    require(system_mount, 'Attached OS image has no mounted volume with the System volume UUID')
+    if mount.is_symlink() or mount.is_file():
+        mount.unlink()
+    elif mount.is_dir():
+        mount.rmdir()
+    mount.symlink_to(system_mount)
+    run([sys.executable, ROOT / 'scripts/build-owner-os-policy.py'], cwd=ROOT)
+finally:
+    if mount.is_symlink():
+        mount.unlink()
+    if whole_device:
+        subprocess.run(['hdiutil', 'detach', whole_device], check=False)
+
+# --- SystemOS policy: manifest.make over the raw image + C verification ------
+spec = importlib.util.spec_from_file_location('verified_manifest', ROOT / 'kits/VerifiedRoot/tools/manifest.py')
+manifest_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(manifest_module)
+out = ROOT / 'build/verified-root-systemos'
+with SYSTEMOS_DMG.open('rb', buffering=1024 * 1024) as stream:
+    record = manifest_module.make(stream, SYSTEMOS_BYTES, KEYS / 'owner.pem', KEYS / 'owner-public.pem',
+                                  SYSTEMOS_UUID, 1, out)
+require(record['image_sha256'] == SYSTEMOS_IMAGE_SHA256, 'SystemOS policy image digest mismatch')
+
+
+class View(ctypes.Structure):
+    _fields_ = [('hashes', ctypes.c_void_p), ('image_bytes', ctypes.c_uint64), ('block_count', ctypes.c_uint64),
+                ('generation', ctypes.c_uint64), ('volume_uuid', ctypes.c_uint8 * 16), ('image_sha256', ctypes.c_uint8 * 32)]
+
+
+native = ctypes.CDLL(str(library))
+native.vr_host_open.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p, ctypes.c_uint64, ctypes.POINTER(View)]
+native.vr_host_block.argtypes = [ctypes.POINTER(View), ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
+encoded = ctypes.create_string_buffer((out / 'manifest.bin').read_bytes())
+anchor = ctypes.create_string_buffer((out / 'trusted-key.bin').read_bytes())
+view = View()
+if native.vr_host_open(encoded, len(encoded) - 1, anchor, 1, ctypes.byref(view)) or \
+        bytes(view.volume_uuid) != uuid.UUID(SYSTEMOS_UUID).bytes:
+    raise SystemExit('SystemOS: real C signature/volume authentication failed')
+complete = hashlib.sha256()
+indices = [0, 1, view.block_count // 2, view.block_count - 1]
+samples, lengths = [], []
+with SYSTEMOS_DMG.open('rb', buffering=1024 * 1024) as stream:
+    for index in range(view.block_count):
+        block = stream.read(min(4096, view.image_bytes - index * 4096))
+        if native.vr_host_block(ctypes.byref(view), index, block, len(block)) != 0:
+            raise SystemExit(f'SystemOS: actual C block verification failed at {index}')
+        complete.update(block)
+        if index in indices:
+            samples.append(block.ljust(4096, b'\0'))
+            lengths.append(len(block))
+    if stream.read(1):
+        raise SystemExit('SystemOS image exceeded its authenticated exact bounds')
+if complete.digest() != bytes(view.image_sha256) or complete.hexdigest() != record['image_sha256']:
+    raise SystemExit('SystemOS: actual complete image digest differs')
+(out / 'original-samples.bin').write_bytes(b''.join(samples))
+report = dict(image_bytes=int(view.image_bytes), blocks_verified=int(view.block_count),
+              image_sha256=complete.hexdigest(), volume_uuid=SYSTEMOS_UUID,
+              generation=int(view.generation), source_compressed_sha256=SYSTEMOS_IMAGE_SHA256,
+              source_format='raw APFS volume image', host_bus_protocol='file',
+              host_media_writable=False, trusted_key_sha256=record['trusted_key_sha256'],
+              actual_sample_indices=indices, actual_sample_lengths=lengths,
+              real_c_signature_and_block_verification=True, original_image_modified=False,
+              host_only=True, boot_root_authenticated=False, qemu_tested=False, hardware_tested=False)
+(out / 'verification.json').write_text(json.dumps(report, indent=2) + '\n')
+print(f'PASS: SystemOS signature and every {view.block_count} block verified by real C/RSA')
+
+# --- Bundle: UniXNU's probe builder re-verifies and compiles both ------------
+run([sys.executable, ROOT / 'scripts/build-verified-root-probe.py',
+     '--component', 'os', '--include-systemos'], cwd=ROOT)
+require(BUNDLE.is_file(), f'Probe bundle archive missing after its builder ran: {BUNDLE}')
+require((ROOT / 'build/verified-root-os/verification.json').is_file(), 'OS policy verification report missing')
+print(f'PASS: owner-root policies signed and bundle compiled: {BUNDLE.relative_to(ROOT)}')
