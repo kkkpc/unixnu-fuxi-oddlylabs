@@ -113,7 +113,13 @@ text_offset = 0
 
 [payload]
 volume = "FUXIESP"
-size_mib = 192
+# The payload volume must hold the 256 MiB Data seed (Payloads/scratch-data.img) as well as the
+# kernel, the trust bundle and the ADT: Build #52 measured the payload files at 375 MiB, and
+# UniXNU scripts/unixnu/payload.py rejects anything over 95% of size_mib (375 / 0.95 = 395 MiB
+# minimum). 512 follows the baseline's own sirius record (306 MiB of payload files with the same
+# 256 MiB seed shape -> size_mib 512). The volume is gzip-compressed into the boot image, so the
+# image grows only by the seed's real content, not by the empty FAT space.
+size_mib = 512
 loader = "firmware"
 title = "UniXNU"
 panic_screen = true
