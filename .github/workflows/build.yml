@@ -208,12 +208,12 @@ jobs:
         run: |
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-system-trust.py" \
             --out "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
-    - name: Build Data seed
-      run: |
-        tree=$(ls -d "$GITHUB_WORKSPACE"/unixnu/out/*/*/fuxi/tree | head -n 1)
-        python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-data-seed.py" \
-          --os-dmg "$tree/.cache/firmware/target-volumes/044-76040-038.dmg" \
-          --out "$GITHUB_WORKSPACE/fuxi/build/data-seed"
+      - name: Build Data seed
+        run: |
+          tree=$(ls -d "$GITHUB_WORKSPACE"/unixnu/out/*/*/fuxi/tree | head -n 1)
+          python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-data-seed.py" \
+            --os-dmg "$tree/.cache/firmware/target-volumes/044-76040-038.dmg" \
+            --out "$GITHUB_WORKSPACE/fuxi/build/data-seed"
       - name: Build payload
         working-directory: unixnu
         run: |
@@ -223,7 +223,7 @@ jobs:
       - name: Build firmware
         working-directory: unixnu
         # DEBUG: the firmware prints its log on the panel, the only console before the touch report.
-        run: ./unixnu build firmware --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --target DEBUG \
+        run: ./unixnu build firmware --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --target DEBUG
       - name: Pack the boot image
         working-directory: unixnu
         run: |
