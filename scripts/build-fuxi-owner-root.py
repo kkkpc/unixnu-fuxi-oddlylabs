@@ -240,6 +240,25 @@ report = dict(image_bytes=int(view.image_bytes), blocks_verified=int(view.block_
 print(f'PASS: SystemOS signature and every {view.block_count} block verified by real C/RSA')
 
 # --- Bundle: UniXNU's probe builder re-verifies and compiles both ------------
+# The probe builder replays the bsd_init compile record, whose -I list names the
+# header-export staging directories under build/xnu/ios-obj/EXPORT_HDRS. The
+# bootstrap pass that leaves the record stops at its link, before the export
+# phase creates all of them (Build #35: EXPORT_HDRS/libsa missing, and clang's
+# -Werror turns the missing include directory into an error even though none of
+# the probe sources include anything from it). Create the ones the record names
+# that do not exist yet; a header a source genuinely needs would still fail
+# loudly as file-not-found. The kernel build creates the obj/ variant of the
+# libsa staging directory itself (build-xnu-4k-baseline.sh, its mkdir line).
+record = json.loads((ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/bsd/DEVELOPMENT/'
+                     'bsd_init.o.json').read_text().strip().rstrip(','))
+arguments = record['arguments']
+for index, value in enumerate(arguments):
+    include = value[2:] if value.startswith('-I') and len(value) > 2 else \
+        arguments[index + 1] if value == '-I' and index + 1 < len(arguments) else None
+    if include and Path(include).is_absolute() and str(Path(include)).startswith(str(ROOT)) \
+            and not Path(include).exists():
+        Path(include).mkdir(parents=True, exist_ok=True)
+        print(f'created header-export staging directory the bootstrap did not reach: {include}')
 run([sys.executable, ROOT / 'scripts/build-verified-root-probe.py',
      '--component', 'os', '--include-systemos'], cwd=ROOT)
 require(BUNDLE.is_file(), f'Probe bundle archive missing after its builder ran: {BUNDLE}')
