@@ -16,7 +16,35 @@
 // boot_progress_active() returning 0 keeps console output on the real
 // console. The definitions are weak, as the verified UFS driver expects
 // ("the source runtime archive carries a weak no-op definition").
+//
+// One exception since the persistent Data stage (2026-11-06):
+// boot_progress_exit prints the NativeRamBlock persist counters once, on
+// the first process exit. No renderer on this board reads those counters
+// and the attach's IOLog lines scroll off long before the exit report, so
+// without this the persist stage's result is invisible on the only
+// evidence source the board has, the photographed console.
 #include <stdint.h>
+#include <stddef.h>
+#include <kern/misc_protos.h>
+
+// Data persistence counters (NativeRamBlock.cpp, an unchanged copy of
+// UniXNU RamBlock 4be2d7e): weak imports, exactly as UniXNU-sheng's
+// BootProgress.c declares them, so this observer still links if the RAM
+// block archive ever drops them. State: 0 off, 1 blank (read-only
+// probe), 2 resumed, 3 fresh, 4 refused/failed, 5 degraded after an I/O
+// error, 6 resumed read-only (probe), 7 kept (the store holds no Data of
+// this seed; this boot's Data runs from the seed alone).
+extern volatile uint32_t native_data_persist_state __attribute__((weak_import));
+extern volatile uint32_t native_data_persist_header __attribute__((weak_import));
+extern volatile uint32_t native_data_persist_gpt __attribute__((weak_import));
+extern volatile uint32_t native_data_persist_gpt_after __attribute__((weak_import));
+extern volatile uint64_t native_data_persist_pages __attribute__((weak_import));
+extern volatile uint64_t native_data_persist_loaded __attribute__((weak_import));
+extern volatile uint64_t native_data_persist_writes __attribute__((weak_import));
+extern volatile uint64_t native_data_persist_syncs __attribute__((weak_import));
+extern volatile uint64_t native_data_persist_errors __attribute__((weak_import));
+extern volatile uint64_t native_data_persist_first_lba __attribute__((weak_import));
+extern volatile uint64_t native_data_persist_present __attribute__((weak_import));
 
 __attribute__((weak)) void
 boot_progress_init(void)
@@ -105,9 +133,33 @@ __attribute__((weak)) void
 boot_progress_exit(int pid, const char *name, int status, unsigned ns,
     uint64_t code)
 {
+	static int persist_reported;
 	(void)pid;
 	(void)name;
 	(void)status;
 	(void)ns;
 	(void)code;
+	// The persist counters are final by the first process exit (the
+	// attach ran before launchd), and the first exit opens the
+	// exit-report page the owner photographs, so the rows land on that
+	// page. The formats are UniXNU-sheng's BootProgress.c rows: the GPT
+	// check before/after the attach, and the write/sync counters a
+	// read-only proof (sheng-data-persist=1) must leave at zero.
+	if (!persist_reported) {
+		persist_reported = 1;
+		if (&native_data_persist_state) {
+			printf("fuxi persist st=%u hdr=%u gpt=%x/%x lba=%llx\n",
+			    native_data_persist_state, native_data_persist_header,
+			    native_data_persist_gpt, native_data_persist_gpt_after,
+			    (unsigned long long)native_data_persist_first_lba);
+			printf("fuxi persist pres=%llu ld=%llu wr=%llu sy=%llu er=%llu\n",
+			    (unsigned long long)native_data_persist_present,
+			    (unsigned long long)native_data_persist_loaded,
+			    (unsigned long long)native_data_persist_writes,
+			    (unsigned long long)native_data_persist_syncs,
+			    (unsigned long long)native_data_persist_errors);
+		} else {
+			printf("fuxi persist counters unavailable\n");
+		}
+	}
 }
