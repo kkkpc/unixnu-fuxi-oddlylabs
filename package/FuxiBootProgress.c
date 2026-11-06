@@ -18,11 +18,16 @@
 // ("the source runtime archive carries a weak no-op definition").
 //
 // One exception since the persistent Data stage (2026-11-06):
-// boot_progress_exit prints the NativeRamBlock persist counters once, on
-// the first process exit. No renderer on this board reads those counters
-// and the attach's IOLog lines scroll off long before the exit report, so
+// boot_progress_exit prints the NativeRamBlock persist counters on every
+// process exit. No renderer on this board reads those counters and the
+// attach's IOLog lines scroll off long before the exit report, so
 // without this the persist stage's result is invisible on the only
-// evidence source the board has, the photographed console.
+// evidence source the board has, the photographed console. The first
+// version printed once, at the first exit; chain52's photograph
+// (2026-11-06) showed the photographed screen is the console tail - the
+// LAST exit-reason report - so the once-only rows scrolled off. The
+// rows now repeat, and the copy at the final report carries the final
+// counter values.
 #include <stdint.h>
 #include <stddef.h>
 #include <kern/misc_protos.h>
@@ -133,33 +138,31 @@ __attribute__((weak)) void
 boot_progress_exit(int pid, const char *name, int status, unsigned ns,
     uint64_t code)
 {
-	static int persist_reported;
 	(void)pid;
 	(void)name;
 	(void)status;
 	(void)ns;
 	(void)code;
-	// The persist counters are final by the first process exit (the
-	// attach ran before launchd), and the first exit opens the
-	// exit-report page the owner photographs, so the rows land on that
-	// page. The formats are UniXNU-sheng's BootProgress.c rows: the GPT
-	// check before/after the attach, and the write/sync counters a
+	// The persist counters are final before the first process exit
+	// (the attach ran before launchd). Printing on every exit leaves
+	// a copy directly above the final exit-reason report - the
+	// photographed console tail - with the final values. The formats
+	// are UniXNU-sheng's BootProgress.c rows: the GPT check
+	// before/after the attach, and the write/sync counters a
 	// read-only proof (sheng-data-persist=1) must leave at zero.
-	if (!persist_reported) {
-		persist_reported = 1;
-		if (&native_data_persist_state) {
-			printf("fuxi persist st=%u hdr=%u gpt=%x/%x lba=%llx\n",
-			    native_data_persist_state, native_data_persist_header,
-			    native_data_persist_gpt, native_data_persist_gpt_after,
-			    (unsigned long long)native_data_persist_first_lba);
-			printf("fuxi persist pres=%llu ld=%llu wr=%llu sy=%llu er=%llu\n",
-			    (unsigned long long)native_data_persist_present,
-			    (unsigned long long)native_data_persist_loaded,
-			    (unsigned long long)native_data_persist_writes,
-			    (unsigned long long)native_data_persist_syncs,
-			    (unsigned long long)native_data_persist_errors);
-		} else {
-			printf("fuxi persist counters unavailable\n");
-		}
+	if (&native_data_persist_state) {
+		printf("fuxi persist st=%u hdr=%u gpt=%x/%x lba=%llx\n",
+		    native_data_persist_state, native_data_persist_header,
+		    native_data_persist_gpt, native_data_persist_gpt_after,
+		    (unsigned long long)native_data_persist_first_lba);
+		printf("fuxi persist pres=%llu ld=%llu wr=%llu sy=%llu er=%llu\n",
+		    (unsigned long long)native_data_persist_present,
+		    (unsigned long long)native_data_persist_loaded,
+		    (unsigned long long)native_data_persist_writes,
+		    (unsigned long long)native_data_persist_syncs,
+		    (unsigned long long)native_data_persist_errors);
+	} else {
+		printf("fuxi persist counters unavailable\n");
+	}
 	}
 }
