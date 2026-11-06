@@ -139,14 +139,19 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # read from the panic screen. Without a touch the boot ends in the root device wait.
 # native-ufs-root=1 selects the ShengUfs root in the userdata reserve (the full OS, flashed
 # once) over the RAM-disk root; the touch probe's SYS row then reports the UFS root.
-# sheng-data-persist=1 (persistent Data phase B, 2026-11-06) makes the ShengUfs driver's
-# store report mode 1, so NativeRamBlock attaches the store window at the end of userdata
-# read-only against the grown seed the payload now carries; sheng-log-reserve=1024 pins
-# the reserve the phase A grow arithmetic already assumes (the driver's default is the
-# same 1024 MiB; it is written out so the window sizing has one visible source).
+# sheng-data-persist=2 with sheng-data-reset=1 (persistent Data phase C install boot,
+# 2026-11-06; phase B's persist=1 read-only proof closed with chain54) makes the
+# ShengUfs driver's store report mode 2 and asks the overlay to start over, which is
+# the only path that initialises a blank store window (Fresh, direct mode); without
+# the reset a blank window is merely kept and nothing is ever written. reset=1 keeps
+# Setup skipped (reset=2 would show the Hello page). The follow-up resume boot drops
+# the reset argument again. NativeRamBlock attaches the store window at the end of
+# userdata against the grown seed the payload carries; sheng-log-reserve=1024 pins
+# the reserve the phase A grow arithmetic already assumes (the driver's default is
+# the same 1024 MiB; it is written out so the window sizing has one visible source).
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1",
                "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "fuxi-touch-panic=2", "native-ufs-root=1",
-               "sheng-data-persist=1", "sheng-log-reserve=1024"]
+               "sheng-data-persist=2", "sheng-data-reset=1", "sheng-log-reserve=1024"]
 
 [payload.adt]
 # Deliver the Data seed packed (DBRDISK1): DarwinBoot copies only the nonzero extents
