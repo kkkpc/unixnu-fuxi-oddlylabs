@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Build this board's scratch Data seed in the image job (macOS runner only).
+"""Build this board's scratch Data seed (macOS runner only).
+
+The workflow runs this script in its own job on a macOS 14 runner, NOT in
+the macos-26 image job: the volume must be formatted by that generation's
+newfs_apfs (2142, the generation that formatted this IPSW's own volumes -
+see the formatter note below). The image job downloads the finished seed
+as a workflow artifact. Run locally on a Mac it works the same; pass
+--os-dmg with an extracted OS image, or --from-ipsw to range-extract the
+pinned OS member from the IPSW first (the RangeFile reader is
+build-fuxi-owner-root.py's, kept in sync by hand).
 
 The seed is a 256 MiB APFS container image whose single volume (OwnerData)
 carries the OS image's initial private/var tree and the pinned scratch volume
@@ -36,20 +45,31 @@ store), so the Data volume is per-boot ephemeral: writes live in RAM only.
 The OS image is an input only; it is attached read-only and never modified.
 
 The same patch pass also normalizes the volume's incompatible-feature word.
-A macOS 26 newfs_apfs volume declares APFS_INCOMPAT_CASE_INSENSITIVE (0x1)
-alone; both IPSW volumes of this OS declare APFS_INCOMPAT_NORMALIZATION_
-INSENSITIVE (0x8) and neither declares 0x1 (SystemOS 0x28, System 0x8) - no
-Apple-shipped volume uses the 0x1-only combination. The chain47 device boot
-(2026-11-06) hung with a permanently black screen inside the scratch Data
-mount's synchronous APFS mount() call - the only no-timeout call in the Data
-path (the seed lookup, the boot-manifest publish and every glue failure were
+A case-insensitive formatter declares APFS_INCOMPAT_CASE_INSENSITIVE (0x1),
+alone (the macOS 26 formatter) or paired with NORMALIZATION_INSENSITIVE
+(0x9 in total); both IPSW volumes of this OS declare 0x8 without 0x1
+(SystemOS 0x28, System 0x8). The chain47 device boot (2026-11-06) hung
+with a permanently black screen inside the scratch Data mount's
+synchronous APFS mount() call - the only no-timeout call in the Data path
+(the seed lookup, the boot-manifest publish and every glue failure were
 audited to fail loudly onto a panic page, and the sibling chain46 image
-booted normally on the same unit minutes later) - so the seed now declares
-0x8 exactly like the volumes this kernel mounts, and the patch refuses any
-other starting value instead of guessing.
+booted normally on the same unit minutes later) - so the seed declares
+0x8 exactly like the volumes this kernel mounts. The patch accepts only
+a formatter declaration (0x1, 0x9, or an already-conforming 0x8) and
+refuses anything else instead of guessing.
+
+The feature word was not the hang, though: chain48, carrying the 0x8
+seed, hung black in exactly the same way, exonerating it. The remaining
+seed-only delta is the formatter generation itself - the macOS 26 seed
+was written by newfs_apfs 2811 (2025) while the mounting APFS is iOS
+17.7's (2142 generation), and the trigger is expected in the structures
+below the superblock (omap/btree/spaceman) that the newer formatter
+writes. That is why the workflow's seed job runs on macOS 14, whose
+newfs_apfs is the IPSW volumes' own 2142 generation.
 """
 import argparse
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -59,9 +79,15 @@ import stat
 import struct
 import subprocess
 import sys
+import urllib.request
 import uuid
+import zipfile
 
 OS_DMG_SHA256 = '3f99b859c9728379110b66657c7b15285bcb1925ad8b5726542e2cdcf8b1028d'
+OS_DMG_NAME = '044-76040-038.dmg'
+# The same pinned IPSW build-fuxi-owner-root.py extracts from; keep in sync.
+IPSW_URL = ('https://updates.cdn-apple.com/2025SpringFCS/fullrestores/122-77166/'
+            'DCA6CFE8-90E9-4B92-880D-3DE171798E40/iPad_Pro_HFR_17.7.11_21H461_Restore.ipsw')
 OS_UUID = '04769D26-2CA0-4825-B443-E2E5F88300F2'
 LAUNCHD_SHA256 = '8cec9a3c44a443b08e977ccc5d577850316ad428c575dc01f09b018dbd5b6a25'
 TARGET_UUID = '18AB5557-DC2D-469B-8758-855E60F5B0DF'
@@ -69,7 +95,9 @@ BLOCK = 4096
 OBJECT_TYPE_APFS = 0x000D  # volume superblock
 FLETCHER_MOD = (1 << 32) - 1
 APSB_INCOMPAT_OFFSET = 56  # apfs_incompatible_features in the volume superblock
-SEED_INCOMPAT_FORMATTER = 0x1  # APFS_INCOMPAT_CASE_INSENSITIVE, as newfs_apfs writes it
+# APFS_INCOMPAT_CASE_INSENSITIVE (0x1), alone as the macOS 26 formatter writes
+# it or paired with NORMALIZATION_INSENSITIVE (0x9) as the macOS 14 one may.
+SEED_INCOMPAT_FORMATTERS = (0x1, 0x9)
 SEED_INCOMPAT_TARGET = 0x8  # APFS_INCOMPAT_NORMALIZATION_INSENSITIVE, as the IPSW volumes declare
 
 
@@ -89,6 +117,66 @@ def sha256_file(path):
         for chunk in iter(lambda: stream.read(1 << 20), b''):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+# --- IPSW member extraction (for --from-ipsw) --------------------------------
+# The RangeFile reader is build-fuxi-owner-root.py's, duplicated because that
+# script runs its pipeline at import time; keep the two copies in sync.
+
+class RangeFile(io.RawIOBase):
+    """A seekable read-only view of a remote file over HTTP range requests."""
+
+    BLOCK = 8 * 1024 * 1024
+
+    def __init__(self, url):
+        self.url = url
+        request = urllib.request.Request(url, method='HEAD')
+        with urllib.request.urlopen(request) as response:
+            self.size = int(response.headers['Content-Length'])
+        self.position = 0
+        self.cache = {}
+
+    def seekable(self):
+        return True
+
+    def seek(self, offset, whence=io.SEEK_SET):
+        self.position = {io.SEEK_SET: offset, io.SEEK_CUR: self.position + offset,
+                         io.SEEK_END: self.size + offset}[whence]
+        return self.position
+
+    def tell(self):
+        return self.position
+
+    def readinto(self, buffer):
+        if self.position >= self.size:
+            return 0
+        block_index, offset = divmod(self.position, self.BLOCK)
+        if block_index not in self.cache:
+            if len(self.cache) > 4:
+                self.cache.clear()
+            start = block_index * self.BLOCK
+            request = urllib.request.Request(self.url, headers={'Range': f'bytes={start}-{start + self.BLOCK - 1}'})
+            with urllib.request.urlopen(request) as response:
+                self.cache[block_index] = response.read()
+        block = self.cache[block_index]
+        take = min(len(buffer), len(block) - offset, self.size - self.position)
+        buffer[:take] = block[offset:offset + take]
+        self.position += take
+        return take
+
+
+def extract_os_dmg(destination):
+    """Range-extract the pinned OS member of the IPSW to destination."""
+    if destination.is_file() and sha256_file(destination) == OS_DMG_SHA256:
+        return destination
+    print(f'extracting {destination.name} from the IPSW (range requests)', flush=True)
+    with zipfile.ZipFile(RangeFile(IPSW_URL)) as archive:
+        member = next(name for name in archive.namelist() if Path(name).name == OS_DMG_NAME)
+        with archive.open(member) as source, destination.open('wb') as target:
+            shutil.copyfileobj(source, target, 1024 * 1024)
+    require(sha256_file(destination) == OS_DMG_SHA256,
+            f'{destination.name} digest differs from the pinned IPSW member after extraction')
+    return destination
 
 
 # --- APFS volume UUID rewriting ---------------------------------------------
@@ -127,9 +215,10 @@ def patch_volume_uuid(image, created_uuid, target_uuid=TARGET_UUID):
 
     Every occurrence must sit in a volume-superblock block; anything else
     aborts instead of guessing. The same pass rewrites each touched
-    superblock's incompatible-feature word from the formatter's value to
-    SEED_INCOMPAT_TARGET (see the module docstring). Returns (UUID
-    occurrences replaced, superblocks normalized).
+    superblock's incompatible-feature word from the formatter's declaration
+    to SEED_INCOMPAT_TARGET (see the module docstring). Returns (UUID
+    occurrences replaced, superblocks normalized, sorted list of the
+    distinct incompatible values the formatter had written).
     """
     source = uuid.UUID(created_uuid).bytes
     target = uuid.UUID(target_uuid).bytes
@@ -145,6 +234,7 @@ def patch_volume_uuid(image, created_uuid, target_uuid=TARGET_UUID):
         index = data.find(source, index + 1)
     require(occurrences, 'Created volume UUID not found in the seed image')
     touched = sorted({offset // BLOCK for offset in occurrences})
+    observed = set()
     for block_index in touched:
         base = block_index * BLOCK
         block = bytes(data[base:base + BLOCK])
@@ -155,9 +245,10 @@ def patch_volume_uuid(image, created_uuid, target_uuid=TARGET_UUID):
         require(block_checksums_valid(block),
                 f'Volume superblock block {block_index} fails its checksum before patching')
         incompat = struct.unpack('<Q', block[APSB_INCOMPAT_OFFSET:APSB_INCOMPAT_OFFSET + 8])[0]
-        require(incompat == SEED_INCOMPAT_FORMATTER,
+        require(incompat == SEED_INCOMPAT_TARGET or incompat in SEED_INCOMPAT_FORMATTERS,
                 f'Volume superblock block {block_index} declares incompatible features '
-                f'0x{incompat:x}, not the formatter value 0x{SEED_INCOMPAT_FORMATTER:x}; refusing to patch')
+                f'0x{incompat:x}, not a formatter declaration; refusing to patch')
+        observed.add(incompat)
     for offset in occurrences:
         data[offset:offset + 16] = target
     for block_index in touched:
@@ -177,7 +268,7 @@ def patch_volume_uuid(image, created_uuid, target_uuid=TARGET_UUID):
                 'features after patching')
         require(block_checksums_valid(block),
                 f'Volume superblock block {block_index} fails its checksum after patching')
-    return len(occurrences), len(touched)
+    return len(occurrences), len(touched), sorted(observed)
 
 
 # --- Seed construction --------------------------------------------------------
@@ -229,17 +320,23 @@ def copy_var_tree(source, target):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--os-dmg', type=Path, required=True,
+    parser.add_argument('--os-dmg', type=Path,
                         help='the extracted OS container image (044-76040-038.dmg) from the kernel build cache')
+    parser.add_argument('--from-ipsw', action='store_true',
+                        help='range-extract the OS image from the pinned IPSW instead of --os-dmg')
     parser.add_argument('--out', type=Path, default=Path('build/data-seed'))
     parser.add_argument('--size-mib', type=int, default=256)
     args = parser.parse_args()
     require(sys.platform == 'darwin', 'The Data seed is built with hdiutil: macOS only')
-    os_dmg = args.os_dmg.resolve()
-    require(os_dmg.is_file(), f'OS image not found: {os_dmg}')
-    require(sha256_file(os_dmg) == OS_DMG_SHA256, 'OS image digest differs from the pinned IPSW member')
+    require(bool(args.os_dmg) != args.from_ipsw, 'Pass exactly one of --os-dmg and --from-ipsw')
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    if args.from_ipsw:
+        os_dmg = extract_os_dmg(out / OS_DMG_NAME)
+    else:
+        os_dmg = args.os_dmg.resolve()
+        require(os_dmg.is_file(), f'OS image not found: {os_dmg}')
+    require(sha256_file(os_dmg) == OS_DMG_SHA256, 'OS image digest differs from the pinned IPSW member')
     image = out / 'owner-data.cdr'
     require(not image.exists(), f'Refuse to overwrite an existing Data seed: {image}')
 
@@ -267,7 +364,7 @@ def main():
         if os_device:
             subprocess.run(['hdiutil', 'detach', os_device], check=False)
 
-    replaced, normalized = patch_volume_uuid(image, created_uuid)
+    replaced, normalized, incompat_from = patch_volume_uuid(image, created_uuid)
 
     # The APFS driver's own acceptance: the patched image must attach and
     # diskutil must report the pinned volume UUID.
@@ -287,14 +384,16 @@ def main():
             'Host formatting did not produce the requested raw APFS container')
     report = dict(volume_uuid=TARGET_UUID, created_volume_uuid=created_uuid,
                   uuid_occurrences_replaced=replaced,
-                  incompatible_features_normalized=normalized, bytes=len(data),
+                  incompatible_features_normalized=normalized,
+                  incompatible_features_from=[f'0x{value:x}' for value in incompat_from],
+                  bytes=len(data),
                   sha256=hashlib.sha256(data).hexdigest(),
                   source_regular_files=count, source_regular_bytes=total,
                   guest_mutable=True, initial_seed_signature_verified=False,
                   seed='Original private/var excluding staged_system_apps; symlinks preserved; '
                        'runtime directories added; volume UUID rewritten to the pinned scratch '
                        'UUID and the volume incompatible features rewritten from the formatter '
-                       'case-insensitive-only declaration to the IPSW volumes normalization-'
+                       'case-insensitive declaration to the IPSW volumes normalization-'
                        'insensitive declaration in the same pass, with APFS object checksums '
                        'repaired and re-verified by attach')
     (out / 'seed.json').write_text(json.dumps(report, indent=2) + '\n')
