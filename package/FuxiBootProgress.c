@@ -164,5 +164,4 @@ boot_progress_exit(int pid, const char *name, int status, unsigned ns,
 	} else {
 		printf("fuxi persist counters unavailable\n");
 	}
-	}
 }
