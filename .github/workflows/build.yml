@@ -96,9 +96,35 @@ jobs:
             | grep -vE '^_fts_|^_(memset|memcpy|memmove|bzero)$|^___bzero$|^___stack_chk_(guard|fail)$' || true)
           if [ -n "$undefined" ]; then echo "::error::unexpected imports: $undefined"; exit 1; fi
 
+  data-seed:
+    name: Data seed (macOS 14 APFS formatter)
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: fuxi
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Build Data seed
+        run: |
+          python3 fuxi/scripts/build-fuxi-data-seed.py \
+            --from-ipsw --out "$RUNNER_TEMP/data-seed"
+      - name: Upload the Data seed
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuxi-data-seed-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/data-seed/owner-data.cdr
+            ${{ runner.temp }}/data-seed/seed.json
+          if-no-files-found: error
+          retention-days: 7
+
   image:
     name: fuxi boot image (kernel, payload, firmware)
-    needs: host-tests
+    needs: [host-tests, data-seed]
     runs-on: macos-26
     timeout-minutes: 240
     env:
@@ -208,12 +234,14 @@ jobs:
         run: |
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-system-trust.py" \
             --out "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
-      - name: Build Data seed
-        run: |
-          tree=$(ls -d "$GITHUB_WORKSPACE"/unixnu/out/*/*/fuxi/tree | head -n 1)
-          python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-data-seed.py" \
-            --os-dmg "$tree/.cache/firmware/target-volumes/044-76040-038.dmg" \
-            --out "$GITHUB_WORKSPACE/fuxi/build/data-seed"
+      # The seed comes from the data-seed job: it is formatted on macOS 14, whose newfs_apfs is the
+      # IPSW volumes' own 2142 generation. A seed formatted by macOS 26 (2811) hangs the iOS 17.7
+      # APFS mount on device (chain47/48, both pure black); see scripts/build-fuxi-data-seed.py.
+      - name: Fetch the Data seed
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: fuxi-data-seed-${{ github.run_attempt }}
+          path: fuxi/build/data-seed
       - name: Build payload
         working-directory: unixnu
         run: |
