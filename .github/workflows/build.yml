@@ -97,8 +97,8 @@ jobs:
           if [ -n "$undefined" ]; then echo "::error::unexpected imports: $undefined"; exit 1; fi
 
   data-seed:
-    name: Data seed (macOS 14 APFS formatter)
-    runs-on: macos-14
+    name: Data seed (macOS 15 APFS formatter)
+    runs-on: macos-15
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -234,9 +234,11 @@ jobs:
         run: |
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-system-trust.py" \
             --out "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
-      # The seed comes from the data-seed job: it is formatted on macOS 14, whose newfs_apfs is the
-      # IPSW volumes' own 2142 generation. A seed formatted by macOS 26 (2811) hangs the iOS 17.7
-      # APFS mount on device (chain47/48, both pure black); see scripts/build-fuxi-data-seed.py.
+      # The seed comes from the data-seed job: it is formatted on macOS 15, whose newfs_apfs is the
+      # 23xx generation - the closest hosted formatter to the IPSW volumes' own 2142 generation
+      # (the macOS 14 hosted images were retired on 2026-11-02, before that job ever ran). A seed
+      # formatted by macOS 26 (2811) hangs the iOS 17.7 APFS mount on device (chain47/48, both pure
+      # black); see scripts/build-fuxi-data-seed.py.
       - name: Fetch the Data seed
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
