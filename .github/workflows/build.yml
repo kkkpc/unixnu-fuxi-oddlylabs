@@ -112,12 +112,17 @@ jobs:
         run: |
           python3 fuxi/scripts/build-fuxi-data-seed.py \
             --from-ipsw --out "$RUNNER_TEMP/data-seed"
+      - name: Pack the Data seed
+        run: |
+          python3 fuxi/scripts/pack-fuxi-data-seed.py \
+            "$RUNNER_TEMP/data-seed/owner-data.cdr" "$RUNNER_TEMP/data-seed/owner-data.dbr"
       - name: Upload the Data seed
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: fuxi-data-seed-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/data-seed/owner-data.cdr
+            ${{ runner.temp }}/data-seed/owner-data.dbr
             ${{ runner.temp }}/data-seed/seed.json
           if-no-files-found: error
           retention-days: 7
@@ -234,11 +239,11 @@ jobs:
         run: |
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-system-trust.py" \
             --out "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
-      # The seed comes from the data-seed job: it is formatted on macOS 15, whose newfs_apfs is the
-      # 23xx generation - the closest hosted formatter to the IPSW volumes' own 2142 generation
-      # (the macOS 14 hosted images were retired on 2026-11-02, before that job ever ran). A seed
-      # formatted by macOS 26 (2811) hangs the iOS 17.7 APFS mount on device (chain47/48, both pure
-      # black); see scripts/build-fuxi-data-seed.py.
+      # The seed comes from the data-seed job: it is formatted on macOS 15 (the macOS 14 hosted
+      # images were retired on 2026-11-02, before that job ever ran) and packed there into the
+      # DBRDISK1 extent form. The dense form does not boot on this unit: chain47/48/49 and the
+      # disc1 discriminator all stayed pure black with the 256 MiB seed in the payload, while
+      # chain50 with the packed seed booted normally (2026-11-06); see porting.toml (storage).
       - name: Fetch the Data seed
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
@@ -249,7 +254,7 @@ jobs:
         run: |
           ./unixnu build payload --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --unique-chip-id "$BRINGUP_SEED" \
             --trust-cache "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle" \
-            --data-ramdisk "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data.cdr"
+            --data-ramdisk "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data.dbr"
       - name: Build firmware
         working-directory: unixnu
         # DEBUG: the firmware prints its log on the panel, the only console before the touch report.
@@ -275,6 +280,8 @@ jobs:
           cp "$report" payload.json
           cp "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data.cdr" data-seed.cdr
           shasum -a 256 data-seed.cdr | sed "s#  .*#  data-seed.cdr#" > data-seed.cdr.sha256
+          cp "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data.dbr" data-seed.dbr
+          shasum -a 256 data-seed.dbr | sed "s#  .*#  data-seed.dbr#" > data-seed.dbr.sha256
           for f in boot.img kernel.macho.gz; do shasum -a 256 "$f" | sed "s#  .*#  $f#" > "$f.sha256"; done
           "$openssl" rand -hex 32 > boot.key
           for f in boot.img kernel.macho.gz; do
@@ -284,7 +291,7 @@ jobs:
             -pkeyopt rsa_padding_mode:oaep -pkeyopt rsa_oaep_md:sha256 -in boot.key -out boot.key.enc
           rm -f boot.key boot.img kernel.macho.gz
           mkdir -p "$RUNNER_TEMP/encrypted"
-          mv boot.img.enc kernel.macho.gz.enc boot.key.enc boot.img.sha256 kernel.macho.gz.sha256 boot.json payload.json data-seed.cdr data-seed.cdr.sha256 \
+          mv boot.img.enc kernel.macho.gz.enc boot.key.enc boot.img.sha256 kernel.macho.gz.sha256 boot.json payload.json data-seed.cdr data-seed.cdr.sha256 data-seed.dbr data-seed.dbr.sha256 \
             "$RUNNER_TEMP/encrypted/"
           ls -l "$RUNNER_TEMP/encrypted"
       - name: Upload the encrypted boot image
