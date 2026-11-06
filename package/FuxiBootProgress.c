@@ -18,16 +18,24 @@
 // ("the source runtime archive carries a weak no-op definition").
 //
 // One exception since the persistent Data stage (2026-11-06):
-// boot_progress_exit prints the NativeRamBlock persist counters on every
-// process exit. No renderer on this board reads those counters and the
-// attach's IOLog lines scroll off long before the exit report, so
-// without this the persist stage's result is invisible on the only
-// evidence source the board has, the photographed console. The first
-// version printed once, at the first exit; chain52's photograph
-// (2026-11-06) showed the photographed screen is the console tail - the
-// LAST exit-reason report - so the once-only rows scrolled off. The
-// rows now repeat, and the copy at the final report carries the final
-// counter values.
+// boot_progress_exit prints the NativeRamBlock persist counters on
+// every process exit, and boot_progress_critical_exit appends the same
+// counters to the exit prefix string itself. No renderer on this board
+// reads those counters and the attach's IOLog lines scroll off long
+// before the exit report, so without this the persist stage's result
+// is invisible on the only evidence source the board has, the
+// photographed screen. The history matters: the first version printed
+// once, at the first exit, and chain52's photograph showed the rows
+// had scrolled off; printing on every exit (chain53) still showed
+// none, because the photographed page is the panic page that
+// panic_with_options renders for a critical exit - it carries only
+// the panic record, and console output printed before the panic never
+// lands on it. The counters therefore ride inside the panic string:
+// proc_handle_critical_exit hands boot_progress_critical_exit the
+// prefix buffer ("watchdogd[151] exited", 1024 bytes under
+// XNU_BOOT_PROGRESS) before panicking with it, so the append makes
+// the counters part of that record. The per-exit printf rows stay as
+// the console-stream copy.
 #include <stdint.h>
 #include <stddef.h>
 #include <kern/misc_protos.h>
@@ -122,8 +130,42 @@ __attribute__((weak)) void
 boot_progress_critical_exit(int pid, char *message, unsigned long size)
 {
 	(void)pid;
-	(void)message;
-	(void)size;
+	if (message == NULL || size == 0) {
+		return;
+	}
+	// The caller (proc_handle_critical_exit, via the zzz-boot-progress
+	// patch) passes prefix_str_buf already holding "name[pid] exited"
+	// together with its full size; the buffer becomes the panic
+	// string verbatim, so the counters have to be appended in place.
+	// Bounded strictly by size: locate the terminating NUL without
+	// reading past the buffer, then let snprintf bound the rest. The
+	// values are the same counters boot_progress_exit prints; they
+	// are final long before a critical exit (the attach ran before
+	// launchd).
+	size_t used = 0;
+
+	while (used < (size_t)size && message[used] != '\0') {
+		used++;
+	}
+	if (used >= (size_t)size) {
+		return;
+	}
+	if (&native_data_persist_state) {
+		snprintf(message + used, (size_t)size - used,
+		    " fuxi persist st=%u hdr=%u gpt=%x/%x lba=%llx"
+		    " pres=%llu ld=%llu wr=%llu sy=%llu er=%llu",
+		    native_data_persist_state, native_data_persist_header,
+		    native_data_persist_gpt, native_data_persist_gpt_after,
+		    (unsigned long long)native_data_persist_first_lba,
+		    (unsigned long long)native_data_persist_present,
+		    (unsigned long long)native_data_persist_loaded,
+		    (unsigned long long)native_data_persist_writes,
+		    (unsigned long long)native_data_persist_syncs,
+		    (unsigned long long)native_data_persist_errors);
+	} else {
+		snprintf(message + used, (size_t)size - used,
+		    " fuxi persist counters unavailable");
+	}
 }
 
 __attribute__((weak)) void
@@ -144,10 +186,11 @@ boot_progress_exit(int pid, const char *name, int status, unsigned ns,
 	(void)ns;
 	(void)code;
 	// The persist counters are final before the first process exit
-	// (the attach ran before launchd). Printing on every exit leaves
-	// a copy directly above the final exit-reason report - the
-	// photographed console tail - with the final values. The formats
-	// are UniXNU-sheng's BootProgress.c rows: the GPT check
+	// (the attach ran before launchd). These rows are the
+	// console-stream copy, repeated on every exit; the copy the
+	// photographed panic page carries is the one
+	// boot_progress_critical_exit appends to the panic string. The
+	// formats are UniXNU-sheng's BootProgress.c rows: the GPT check
 	// before/after the attach, and the write/sync counters a
 	// read-only proof (sheng-data-persist=1) must leave at zero.
 	if (&native_data_persist_state) {
