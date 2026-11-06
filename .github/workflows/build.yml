@@ -2,6 +2,12 @@ name: Build
 
 on:
   push:
+    # Documentation-only pushes (Markdown, porting records) do not change the
+    # image; skip the full build for them. The Device documentation workflow
+    # still runs and validates the records.
+    paths-ignore:
+      - '**.md'
+      - 'porting.toml'
   pull_request:
   workflow_dispatch:
     inputs:
