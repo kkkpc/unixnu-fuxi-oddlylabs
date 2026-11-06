@@ -113,13 +113,15 @@ text_offset = 0
 
 [payload]
 volume = "FUXIESP"
-# The payload volume must hold the 256 MiB Data seed (Payloads/scratch-data.img) as well as the
-# kernel, the trust bundle and the ADT: Build #52 measured the payload files at 375 MiB, and
-# UniXNU scripts/unixnu/payload.py rejects anything over 95% of size_mib (375 / 0.95 = 395 MiB
-# minimum). 512 follows the baseline's own sirius record (306 MiB of payload files with the same
-# 256 MiB seed shape -> size_mib 512). The volume is gzip-compressed into the boot image, so the
-# image grows only by the seed's real content, not by the empty FAT space.
-size_mib = 512
+# The payload volume holds the Data seed as a packed DBRDISK1 file (Payloads/scratch-data.img,
+# about 1 MiB for the 256 MiB logical seed; see [payload.adt] packed_data_ramdisk), the kernel,
+# the trust bundle and the ADT: about 127 MiB in total, so 192 MiB - the pre-Data size - is
+# ample (UniXNU scripts/unixnu/payload.py rejects anything over 95% of size_mib). The dense
+# seed at size_mib 512 (Builds #52-#59) is device-disproven: chain47/48/49 and the disc1
+# discriminator all booted to a pure black screen with the dense seed in the payload, while
+# chain50 with the packed seed at 192 MiB booted normally (2026-11-06). The volume is
+# gzip-compressed into the boot image, so the image grows only by the payload's real content.
+size_mib = 192
 loader = "firmware"
 title = "UniXNU"
 panic_screen = true
@@ -141,6 +143,10 @@ kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmg
                "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "fuxi-touch-panic=2", "native-ufs-root=1"]
 
 [payload.adt]
+# Deliver the Data seed packed (DBRDISK1): DarwinBoot copies only the nonzero extents
+# (about 1 MiB) instead of the whole 256 MiB dense image. Device-measured on alioth and,
+# since chain50 (2026-11-06), on this unit; the dense form does not boot here (see [payload]).
+packed_data_ramdisk = true
 # Supply the board's identity seed through --unique-chip-id.
 chip_id = "207"
 unique_chip_id = "required"
