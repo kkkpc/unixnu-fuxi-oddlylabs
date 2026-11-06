@@ -259,7 +259,7 @@ jobs:
         run: |
           ./unixnu build payload --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --unique-chip-id "$BRINGUP_SEED" \
             --trust-cache "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle" \
-            --data-ramdisk "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data.dbr"
+            --data-ramdisk "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data-grown.dbr"
       - name: Build firmware
         working-directory: unixnu
         # DEBUG: the firmware prints its log on the panel, the only console before the touch report.
