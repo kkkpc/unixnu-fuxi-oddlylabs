@@ -20,8 +20,11 @@ Build-time identity gates, all hard failures:
   * a verification original is located uniquely in the actual build
     tree (a staged prelink candidate if one exists, else the
     decompressed original kernelcache, itself verified against the
-    OS profile's kernelcache pin), and its IOMobileGraphicsFamily
-    __TEXT_EXEC hashes to the record's family_text_sha256;
+    OS profile's kernelcache pin; the kernelcache normally appears
+    only at prelink time, after the archive steps, so the builder
+    materializes it through the framework's own CLI when absent),
+    and its IOMobileGraphicsFamily __TEXT_EXEC hashes to the
+    record's family_text_sha256;
   * the compiled component object's vtable matches the record
     (owned entries are the component's own methods or guarded
     abstract leaves; original-class entries resolve to record
@@ -119,8 +122,20 @@ require('original_client_initializer' not in json.dumps(bindings),
         'unqualified original_client_initializer leaked into the binding set')
 
 # --- Gate 2: locate the verification original in the actual tree ------------
+# Framework layout (scripts/unixnu/config.py, scripts/unixnu/ipsw.py): the
+# tree is <out_root>/<device>/<os>/<work>/tree, the framework checkout is one
+# level above out_root, and the decompressed original kernelcache lives at
+# <out_root>/ipsw/<build>/kernelcache.decompressed. It is normally created at
+# prelink time, which runs AFTER the archive steps, so on a fresh build it
+# does not exist yet when this builder runs; in that case the builder
+# materializes it through the framework's own CLI (`unixnu ipsw
+# KernelCache`), which streams the pinned IPSW member and verifies it
+# against the board pin. Prelink later reuses the same file.
+OUT_ROOT = ROOT.parents[4]
+FRAMEWORK = ROOT.parents[5]
 original = None
 original_mode = None
+original_detail = None
 staged = ROOT / 'build/xnu-prelink/native-owner-mobile-graphics-candidate.macho'
 if not staged.exists():
     later = sorted((ROOT / 'build/xnu-prelink').glob('native-owner-ufs-cpu-desktop-*-candidate.macho'),
@@ -130,19 +145,40 @@ if not staged.exists():
 if staged.exists():
     original, original_mode = staged, 'staged-candidate'
 else:
-    candidates = []
-    if os.environ.get('UNIXNU_KERNELCACHE'):
-        candidates.append(Path(os.environ['UNIXNU_KERNELCACHE']))
-    out_dir = ROOT.parents[3]  # <framework>/out (tree = out/<device>/<os>/<work>/tree)
-    candidates.append(out_dir / 'ipsw/kernelcache.decompressed')
-    candidates.append(ROOT / 'kernelcache.decompressed')
-    for candidate in candidates:
-        if candidate.is_file() and sha(candidate) == KERNELCACHE_SHA256:
-            original, original_mode = candidate, 'original-kernelcache'
-            break
+    def kernelcache_candidates():
+        found = []
+        if os.environ.get('UNIXNU_KERNELCACHE'):
+            found.append(Path(os.environ['UNIXNU_KERNELCACHE']))
+        ipsw_dir = OUT_ROOT / 'ipsw'
+        if ipsw_dir.is_dir():
+            found.extend(sorted(ipsw_dir.glob('*/kernelcache.decompressed')))
+        found.append(ROOT / 'kernelcache.decompressed')
+        return [p for p in found if p.is_file() and sha(p) == KERNELCACHE_SHA256]
+
+    found = kernelcache_candidates()
+    if not found:
+        cli = FRAMEWORK / 'unixnu'
+        if cli.is_file():
+            command = [str(cli), 'ipsw', 'fetch', 'KernelCache']
+            state = OUT_ROOT / 'state.json'
+            if state.is_file():
+                device = json.loads(state.read_text()).get('device')
+                if device:
+                    command += ['--device', device]
+            result = subprocess.run(command, cwd=FRAMEWORK, capture_output=True, text=True, timeout=900)
+            require(result.returncode == 0,
+                    'Framework CLI failed to materialize the original kernelcache: '
+                    + (result.stderr.strip() or result.stdout.strip()))
+            original_detail = 'materialized via the framework CLI (unixnu ipsw fetch KernelCache)'
+            found = kernelcache_candidates()
+    require(len(found) <= 1,
+            f'More than one decompressed kernelcache matches the OS profile pin: {found}')
+    if found:
+        original, original_mode = found[0], 'original-kernelcache'
 require(original is not None,
-        'No verification original found in the build tree: no staged prelink candidate and no '
-        'decompressed kernelcache matching the OS profile pin; refusing to build on unverified inputs')
+        'No verification original found in the build tree: no staged prelink candidate, no '
+        'decompressed kernelcache matching the OS profile pin, and the framework CLI could not '
+        'materialize one; refusing to build on unverified inputs')
 original_blob = original.read_bytes()
 fam_sha, _ftext = family_text_sha256(original_blob)
 require(fam_sha == audit['family_text_sha256'],
@@ -366,6 +402,7 @@ sources = [ROOT / 'drivers/GopFramebuffer/NativeLegacyDisplay.cpp',
     generated_abi_sha256=sha(OUT / 'OriginalLegacyFramebufferABI.h'),
     abi_record_sha256=RECORD_SHA256,
     verification_original_mode=original_mode,
+    verification_original_detail=original_detail,
     verification_original_sha256=sha(original),
     family_text_sha256=fam_sha,
     compiled_object_sha256=sha(obj), late_object_sha256=sha(late),
