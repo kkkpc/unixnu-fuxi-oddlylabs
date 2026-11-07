@@ -128,11 +128,15 @@ require('original_client_initializer' not in json.dumps(bindings),
 # <out_root>/ipsw/<build>/kernelcache.decompressed. It is normally created at
 # prelink time, which runs AFTER the archive steps, so on a fresh build it
 # does not exist yet when this builder runs; in that case the builder
-# materializes it through the framework's own CLI (`unixnu ipsw
+# materializes it through the framework's own CLI (`unixnu ipsw fetch
 # KernelCache`), which streams the pinned IPSW member and verifies it
 # against the board pin. Prelink later reuses the same file.
-OUT_ROOT = ROOT.parents[4]
-FRAMEWORK = ROOT.parents[5]
+OUT_ROOT = ROOT.parents[3]
+FRAMEWORK = ROOT.parents[4]
+require((FRAMEWORK / 'unixnu').is_file(),
+        f'Path resolution failed: no framework CLI at {FRAMEWORK}/unixnu (tree layout changed?)')
+print(f'fuxi-legacy: framework_root={FRAMEWORK}')
+print(f'fuxi-legacy: out_root={OUT_ROOT}')
 original = None
 original_mode = None
 original_detail = None
@@ -145,42 +149,44 @@ if not staged.exists():
 if staged.exists():
     original, original_mode = staged, 'staged-candidate'
 else:
-    def kernelcache_candidates():
-        found = []
-        if os.environ.get('UNIXNU_KERNELCACHE'):
-            found.append(Path(os.environ['UNIXNU_KERNELCACHE']))
-        ipsw_dir = OUT_ROOT / 'ipsw'
-        if ipsw_dir.is_dir():
-            found.extend(sorted(ipsw_dir.glob('*/kernelcache.decompressed')))
-        found.append(ROOT / 'kernelcache.decompressed')
-        return [p for p in found if p.is_file() and sha(p) == KERNELCACHE_SHA256]
-
-    found = kernelcache_candidates()
-    if not found:
+    # The framework passes the IPSW build to archive steps as
+    # UNIXNU_IPSW_BUILD (scripts/unixnu/kernel.py, xnu_env), and the cache
+    # path is <out_root>/ipsw/<build>/kernelcache.decompressed
+    # (scripts/unixnu/ipsw.py). Locate it exactly from that variable, never
+    # from a hardcoded build string or a directory glob.
+    ipsw_build = os.environ.get('UNIXNU_IPSW_BUILD')
+    require(bool(ipsw_build), 'UNIXNU_IPSW_BUILD is missing from the archive environment')
+    expected = OUT_ROOT / 'ipsw' / ipsw_build / 'kernelcache.decompressed'
+    override = os.environ.get('UNIXNU_KERNELCACHE')
+    cache_path = Path(override) if override else expected
+    print(f'fuxi-legacy: ipsw_build={ipsw_build}')
+    print(f'fuxi-legacy: kernelcache_path={cache_path}')
+    print(f'fuxi-legacy: kernelcache_exists={cache_path.is_file()}')
+    if not (cache_path.is_file() and sha(cache_path) == KERNELCACHE_SHA256):
         cli = FRAMEWORK / 'unixnu'
-        if cli.is_file():
-            command = [str(cli), 'ipsw', 'fetch', 'KernelCache']
-            state = OUT_ROOT / 'state.json'
-            if state.is_file():
-                device = json.loads(state.read_text()).get('device')
-                if device:
-                    command += ['--device', device]
-            result = subprocess.run(command, cwd=FRAMEWORK, capture_output=True, text=True, timeout=900)
-            require(result.returncode == 0,
-                    'Framework CLI failed to materialize the original kernelcache: '
-                    + (result.stderr.strip() or result.stdout.strip()))
-            original_detail = 'materialized via the framework CLI (unixnu ipsw fetch KernelCache)'
-            found = kernelcache_candidates()
-    require(len(found) <= 1,
-            f'More than one decompressed kernelcache matches the OS profile pin: {found}')
-    if found:
-        original, original_mode = found[0], 'original-kernelcache'
+        command = [str(cli), 'ipsw', 'fetch', 'KernelCache']
+        state = OUT_ROOT / 'state.json'
+        if state.is_file():
+            device = json.loads(state.read_text()).get('device')
+            if device:
+                command += ['--device', device]
+        result = subprocess.run(command, cwd=FRAMEWORK, capture_output=True, text=True, timeout=900)
+        require(result.returncode == 0,
+                'Framework CLI failed to materialize the original kernelcache: '
+                + (result.stderr.strip() or result.stdout.strip()))
+        original_detail = 'materialized via the framework CLI (unixnu ipsw fetch KernelCache)'
+        print(f'fuxi-legacy: kernelcache_exists_after_cli={cache_path.is_file()}')
+    require(cache_path.is_file() and sha(cache_path) == KERNELCACHE_SHA256,
+            'No verification original found in the build tree: no staged prelink candidate, no '
+            'decompressed kernelcache matching the OS profile pin, and the framework CLI could not '
+            'materialize one; refusing to build on unverified inputs')
+    print(f'fuxi-legacy: kernelcache_sha256={sha(cache_path)}')
+    original, original_mode = cache_path, 'original-kernelcache'
 require(original is not None,
-        'No verification original found in the build tree: no staged prelink candidate, no '
-        'decompressed kernelcache matching the OS profile pin, and the framework CLI could not '
-        'materialize one; refusing to build on unverified inputs')
+        'No verification original found in the build tree; refusing to build on unverified inputs')
 original_blob = original.read_bytes()
 fam_sha, _ftext = family_text_sha256(original_blob)
+print(f'fuxi-legacy: family_text_sha256={fam_sha}')
 require(fam_sha == audit['family_text_sha256'],
         f'Family __TEXT_EXEC sha256 {fam_sha} does not match the E2 record {audit["family_text_sha256"]}')
 candidate_names = None
