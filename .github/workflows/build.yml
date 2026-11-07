@@ -195,6 +195,11 @@ jobs:
         env:
           # prepare-xnu-source.py lists Apple sources through the GitHub API (anonymous calls hit the shared rate limit).
           GITHUB_TOKEN: ${{ github.token }}
+          # QcomXnuUsbDebug (package/drivers/QcomXnuUsbDebug): the six patched XNU units compile only with
+          # XNU_QCOM_USB_DEBUG=1 and the module's include path. Setting XNU_EXTRA_CFLAGS replaces the
+          # baseline's own default warning suppressions (build-xnu-4k-baseline.sh seeds EXTRA_CFLAGS
+          # from it), so those defaults are repeated verbatim ahead of the module's flags.
+          XNU_EXTRA_CFLAGS: "-Wno-reserved-identifier -Wno-pre-c11-compat -Wno-missing-designated-field-initializers -Wno-suggest-override -Wno-unnecessary-virtual-specifier -Wno-suggest-destructor-override -Wno-ms-bitfield-padding -DXNU_QCOM_USB_DEBUG=1 -I${{ github.workspace }}/fuxi/package/drivers/QcomXnuUsbDebug/include"
         run: |
           ./unixnu build kernel --device "$GITHUB_WORKSPACE/fuxi"
           ./unixnu status --device "$GITHUB_WORKSPACE/fuxi" --json > "$RUNNER_TEMP/unixnu-status.json" || true
