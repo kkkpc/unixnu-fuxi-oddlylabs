@@ -190,7 +190,7 @@ static int policy_mkdir_chain(proc_t p,uint64_t scratch,const char *path) {
 // Write one file with the disabled.plist write's discipline: path at +0, content out in 0x1f0 pieces
 // through +0x200 (the cache-mount environment slots live at +0x400), stat buffer at +0x800, and the
 // same close-out verification (owner, mode, regular file, exact size).
-static int policy_write_file(proc_t p,uint64_t scratch,const char *path,const char *text,int uid,int gid,unsigned mode) {
+static int policy_write_file(proc_t p,uint64_t scratch,const char *path,const char *text,uid_t uid,gid_t gid,unsigned mode) {
  int error=0,fd=-1;int32_t result=0;
  if((error=copyout(path,scratch,strlen(path)+1)))goto done;
  struct open_args op={.path=scratch,.flags=O_WRONLY|O_CREAT|O_TRUNC|O_NOFOLLOW,.mode=mode};
