@@ -121,6 +121,28 @@ bindings = {name: int(value, 16) for name, value in audit['bindings'].items()
 require('original_client_initializer' not in json.dumps(bindings),
         'unqualified original_client_initializer leaked into the binding set')
 
+# The E2 record carries the original class's init address in its top-level
+# original_init field (and again in methods[21]) but not in bindings: the
+# audit qualified init as a standalone field. Slot 21 of the compiled
+# vtable names that symbol, and Gate 3 requires every original-class entry
+# to be backed by a binding, so map it explicitly — from the record only,
+# with both record fields required to agree. No other inherited method is
+# inferred this way.
+LEGACY_INIT_SYMBOL = '__ZN25IOMobileFramebufferLegacy4initEP12OSDictionary'
+
+def apply_original_init_alias(bindings, audit):
+    methods = audit['methods']
+    require(int(methods[21]['slot']) == 21, 'E2 slot 21 identity mismatch')
+    legacy_init = int(audit['original_init'], 16)
+    require(int(methods[21]['address'], 16) == legacy_init,
+            'E2 original_init disagrees with the slot 21 address')
+    require(LEGACY_INIT_SYMBOL not in bindings or bindings[LEGACY_INIT_SYMBOL] == legacy_init,
+            'Conflicting original init binding')
+    bindings[LEGACY_INIT_SYMBOL] = legacy_init
+    return bindings
+
+bindings = apply_original_init_alias(bindings, audit)
+
 # --- Gate 2: locate the verification original in the actual tree ------------
 # Framework layout (scripts/unixnu/config.py, scripts/unixnu/ipsw.py): the
 # tree is <out_root>/<device>/<os>/<work>/tree, the framework checkout is one
