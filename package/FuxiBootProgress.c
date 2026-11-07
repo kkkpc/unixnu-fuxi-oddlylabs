@@ -43,6 +43,13 @@
 // XNU_BOOT_PROGRESS) before panicking with it, so the append makes
 // the counters part of that record. The per-exit printf rows stay as
 // the console-stream copy.
+//
+// A third exception (chain60): the lifecycle probe further below
+// keeps one fixed-size record per SpringBoard / backboardd lifecycle
+// event, so the next boot can answer when each SpringBoard launch
+// happened and what the kernel actually saw at its exit, instead of
+// only how many launches the census counted. It is observe-only and
+// records raw hook arguments verbatim; see its own comment.
 #include <stdint.h>
 #include <stddef.h>
 #include <kern/misc_protos.h>
@@ -124,6 +131,536 @@ bp_census_exit(const char *name)
 		bp_sb_exit++;
 	} else if (bp_text_is(name, "backboardd")) {
 		bp_bb_exit++;
+	}
+}
+
+// Stage-2 lifecycle probe (chain60): per-event records for the same
+// two processes, taken in the same two hooks the census uses, so the
+// probe's coverage is exactly the coverage chain59's counts already
+// proved on device (sb 3/3 on chain59, sb 4/4 on the usb1 boot —
+// signature-entry counts both times, see the semantics note below).
+// Each record carries a global sequence number, the process, the
+// event kind, the pid, a mach_absolute_time stamp, and — for exits —
+// the exit hook's raw arguments (status, reason namespace, reason
+// code) exactly as the boot-progress patch's call site in
+// bsd/kern/kern_exit.c hands them over: rv, and p->p_exit_reason's
+// osr_namespace / osr_code. The call site passes 0 for both when
+// p_exit_reason is NULL, but a reason object carrying namespace 0
+// and code 0 would arrive identically, so the hook cannot observe
+// reason presence: the printed exit lines carry
+// reason_presence=unavailable, and the values are recorded raw,
+// never classified — a plain exit status stays a plain exit
+// status, and no jetsam, watchdog or crash label is ever derived
+// from it. The sig field in the printed exit line is the
+// wait-status ABI field (status & 0x7f) carried losslessly inside
+// the raw status, not a cause. The parent pid is likewise not
+// observable at either hook (the patch passes pid, name and stage,
+// and pid, name, status, ns, code), and walking the process list
+// for it would break this observer's no-locking design, so every
+// printed line carries ppid=unavailable: an explicit hole in the
+// data, not a format omission.
+//
+// Stage semantics, from the patch's call sites in
+// bsd/kern/kern_exec.c: "exec load_machfile returned" fires before
+// the caller checks lret against LOAD_SUCCESS, so lm-returned
+// means only that load_machfile returned — its return value is not
+// carried. "exec process signature accepted" means
+// proc_process_signature returned 0, i.e. the signature check
+// passed; it does NOT mean the exec as a whole committed, and this
+// revision deliberately has no exec-success event, because no call
+// site observes the final exec commit. The census above counts at
+// signature entry, so its exec counts are signature-entry counts.
+//
+// Ordering: an event's sequence number is its buffer-claim order,
+// taken after the timestamp; under multi-CPU concurrency the two
+// orders can differ, so the raw mach_absolute_time ticks are the
+// time basis for any timeline. The ticks are raw counter units,
+// not milliseconds and not wall time.
+//
+// Storage and publication: a fixed 64-entry array, first-come
+// kept, later events only bump the dropped counter — the first
+// SpringBoard failure is the evidence that matters, and a bounded
+// buffer can never turn the probe into memory pressure. The claim
+// counter alone does not make a record readable: a writer fills
+// every field first and publishes the slot's ready flag last with
+// release semantics, and every reader takes the counters with
+// atomic loads and a slot with acquire semantics, skipping slots
+// whose ready flag is not set, so a half-written record can never
+// reach a dump or the panic digest. (The dropped counter is kept
+// as an independent cross-check; the panic digest derives its own
+// dropped figure from its claim snapshot, because the counter's
+// increment can lag the claim it belongs to.)
+//
+// Output discipline: the hooks themselves only write the buffer —
+// no printing, no allocation. Records reach the console (and with
+// it the USB stream) from one place only: bp_ev_flush() runs at
+// the end of boot_progress_exit, next to the persist rows that
+// already print there on every process exit. One flush owner at a
+// time prints, in sequence order (see bp_ev_flush for the
+// BUSY|AGAIN gate that keeps a scan responsible for every record
+// without any waiting). A scan stops at the first not-yet-ready
+// slot. boot_progress_critical_exit prints nothing; the panic
+// string carries only the digest bp_ev_append_digest appends
+// there, read under the same ready discipline from a single
+// snapshot of the claim counter and the flush cursor, so its
+// kept, pending, unflushed and dropped figures share one basis.
+// Observe only: nothing in the probe touches exit or restart
+// behaviour.
+extern uint64_t mach_absolute_time(void);
+
+#define BP_WHO_SB	1
+#define BP_WHO_BB	2
+
+#define BP_EV_LM_ENTER		1	/* "exec load_machfile enter" */
+#define BP_EV_LM_RETURNED	2	/* "exec load_machfile returned" */
+#define BP_EV_SIG_ENTER		3	/* "exec process signature enter" */
+#define BP_EV_SIG_ACCEPTED	4	/* "exec process signature accepted" */
+#define BP_EV_SIG_REFUSED	5	/* "exec process signature REFUSED" */
+#define BP_EV_MAC_REFUSED	6	/* "exec MAC policy REFUSED" */
+#define BP_EV_EXIT		7	/* boot_progress_exit */
+
+#define BP_EV_CAP	64u
+
+struct bp_ev {
+	unsigned int ready;	/* published last, release semantics */
+	unsigned int seq;
+	unsigned int who;
+	unsigned int kind;
+	int pid;
+	uint64_t ticks;
+	int status;
+	unsigned int ns;
+	uint64_t code;
+};
+
+static struct bp_ev bp_events[BP_EV_CAP];
+static unsigned int bp_ev_claimed;
+static unsigned int bp_ev_dropped;
+static unsigned int bp_ev_flush_next;
+
+#define BP_EV_FLUSH_BUSY	1u
+#define BP_EV_FLUSH_AGAIN	2u
+static unsigned int bp_ev_flush_state;
+
+static unsigned int
+bp_who(const char *name)
+{
+	if (bp_text_is(name, "SpringBoard")) {
+		return BP_WHO_SB;
+	}
+	if (bp_text_is(name, "backboardd")) {
+		return BP_WHO_BB;
+	}
+	return 0;
+}
+
+static const char *
+bp_ev_kind_name(unsigned int kind)
+{
+	switch (kind) {
+	case BP_EV_LM_ENTER:
+		return "lm-enter";
+	case BP_EV_LM_RETURNED:
+		return "lm-returned";
+	case BP_EV_SIG_ENTER:
+		return "sig-enter";
+	case BP_EV_SIG_ACCEPTED:
+		return "sig-accepted";
+	case BP_EV_SIG_REFUSED:
+		return "sig-refused";
+	case BP_EV_MAC_REFUSED:
+		return "mac-refused";
+	case BP_EV_EXIT:
+		return "exit";
+	default:
+		return "?";
+	}
+}
+
+static unsigned int
+bp_ev_kept(void)
+{
+	unsigned int claimed = __atomic_load_n(&bp_ev_claimed,
+	    __ATOMIC_RELAXED);
+
+	return claimed < BP_EV_CAP ? claimed : BP_EV_CAP;
+}
+
+static int
+bp_ev_ready(const struct bp_ev *ev)
+{
+	return __atomic_load_n(&ev->ready, __ATOMIC_ACQUIRE) != 0;
+}
+
+static void
+bp_ev_print(const struct bp_ev *ev)
+{
+	if (ev->kind == BP_EV_EXIT) {
+		printf("fuxi ev #%u %s exit pid=%d ppid=unavailable"
+		    " t=%llu status=0x%x sig=%d ns=%u code=0x%llx"
+		    " reason_presence=unavailable\n",
+		    ev->seq, ev->who == BP_WHO_SB ? "sb" : "bb", ev->pid,
+		    (unsigned long long)ev->ticks,
+		    (unsigned int)ev->status, ev->status & 0x7f, ev->ns,
+		    (unsigned long long)ev->code);
+	} else {
+		printf("fuxi ev #%u %s %s pid=%d ppid=unavailable"
+		    " t=%llu\n",
+		    ev->seq, ev->who == BP_WHO_SB ? "sb" : "bb",
+		    bp_ev_kind_name(ev->kind), ev->pid,
+		    (unsigned long long)ev->ticks);
+	}
+}
+
+static void
+bp_ev_record(unsigned int who, unsigned int kind, int pid, int status,
+    unsigned int ns, uint64_t code)
+{
+	uint64_t ticks = mach_absolute_time();
+	unsigned int claimed = __atomic_fetch_add(&bp_ev_claimed, 1,
+	    __ATOMIC_RELAXED);
+
+	if (claimed < BP_EV_CAP) {
+		struct bp_ev *ev = &bp_events[claimed];
+
+		ev->seq = claimed + 1;
+		ev->who = who;
+		ev->kind = kind;
+		ev->pid = pid;
+		ev->ticks = ticks;
+		ev->status = status;
+		ev->ns = ns;
+		ev->code = code;
+		__atomic_store_n(&ev->ready, 1, __ATOMIC_RELEASE);
+	} else {
+		__atomic_fetch_add(&bp_ev_dropped, 1, __ATOMIC_RELAXED);
+	}
+}
+
+// Print every ready, not-yet-printed record, in sequence order.
+// Called only from boot_progress_exit, beside the persist rows.
+// One owner at a time prints, so the stream cannot show a later
+// record before an earlier one, and no record can print twice.
+// The gate is a two-bit state, not a plain busy flag: a plain
+// flag loses a window — a contender that finds the gate held and
+// simply returns may have claimed a record after the owner took
+// its kept snapshot, and with no later exit nothing would ever
+// print that record. Here a contender instead sets AGAIN before
+// returning; the owner, before releasing, either sees AGAIN
+// (clears it, keeps the gate, and rescans with a fresh snapshot)
+// or wins the release CAS — and a contender whose AGAIN CAS
+// loses to that release observes the free state and acquires the
+// gate itself. Either way some flush is always responsible for
+// the next scan; nobody waits, and the only retries are on the
+// atomic state transitions themselves. A scan stops at the first
+// slot whose writer has not published yet and never waits for it.
+//
+// The state transitions are also the memory-ordering vehicle for
+// the records themselves, which matters on this target's weakly
+// ordered ARM64 model: the claim increment is relaxed and the
+// slot publication a release store into the slot, neither of
+// which a rescan could rely on seeing if the AGAIN handshake
+// were relaxed too — the owner could observe AGAIN, rescan with
+// a stale kept, clear AGAIN and release, and the new record
+// would be stranded exactly as if no handshake existed. So the
+// contender's notification CAS and the owner's handoff CAS
+// operations are acquire-release (acquire on failure, and the
+// owner's state loads are acquire): the notification is
+// sequenced after the contender's bp_ev_record, so an owner
+// that acquires the notified state has a happens-before path to
+// that claim and publication before its next snapshot, and
+// chained notifications republish earlier contenders' writes
+// the same way. If the owner's release wins the race instead,
+// the contender's CAS fails, it observes the free state, and it
+// acquires the gate and scans itself. (A host stress run on a
+// strongly ordered machine cannot exhibit the relaxed failure;
+// the orderings above are the guarantee, not the test.)
+static void
+bp_ev_flush(void)
+{
+	unsigned int state = __atomic_load_n(&bp_ev_flush_state,
+	    __ATOMIC_RELAXED);
+
+	for (;;) {
+		if ((state & BP_EV_FLUSH_BUSY) != 0) {
+			unsigned int desired = state | BP_EV_FLUSH_AGAIN;
+
+			if (__atomic_compare_exchange_n(&bp_ev_flush_state,
+			    &state, desired, 0, __ATOMIC_ACQ_REL,
+			    __ATOMIC_ACQUIRE)) {
+				return;
+			}
+		} else {
+			unsigned int desired = BP_EV_FLUSH_BUSY;
+
+			if (__atomic_compare_exchange_n(&bp_ev_flush_state,
+			    &state, desired, 0, __ATOMIC_ACQUIRE,
+			    __ATOMIC_RELAXED)) {
+				break;
+			}
+		}
+	}
+
+	for (;;) {
+		unsigned int kept = bp_ev_kept();
+		unsigned int next = __atomic_load_n(&bp_ev_flush_next,
+		    __ATOMIC_RELAXED);
+
+		while (next < kept) {
+			const struct bp_ev *ev = &bp_events[next];
+
+			if (!bp_ev_ready(ev)) {
+				break;
+			}
+			bp_ev_print(ev);
+			next++;
+			__atomic_store_n(&bp_ev_flush_next, next,
+			    __ATOMIC_RELAXED);
+		}
+
+		// Retain ownership and rescan if any contender arrived
+		// during this pass. Otherwise release. The CAS makes
+		// the release-vs-contender race lossless, as described
+		// above.
+		for (;;) {
+			state = __atomic_load_n(&bp_ev_flush_state,
+			    __ATOMIC_ACQUIRE);
+			if ((state & BP_EV_FLUSH_AGAIN) != 0) {
+				unsigned int desired = BP_EV_FLUSH_BUSY;
+
+				if (__atomic_compare_exchange_n(
+				    &bp_ev_flush_state, &state, desired, 0,
+				    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+					break;
+				}
+			} else {
+				unsigned int desired = 0;
+
+				if (__atomic_compare_exchange_n(
+				    &bp_ev_flush_state, &state, desired, 0,
+				    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+					return;
+				}
+			}
+		}
+	}
+}
+
+// Append text to the panic string only if it fits whole, NUL
+// included; otherwise append nothing. The lifecycle digest below
+// is built from these whole-or-nothing pieces so it can never
+// contain half a field. The length check is in subtraction form
+// so it cannot overflow, and the snprintf result is verified
+// against the measured length.
+static int
+bp_append_whole(char *message, size_t size, size_t *used_io,
+    const char *text)
+{
+	size_t len = 0;
+
+	while (text[len] != '\0') {
+		len++;
+	}
+	if (*used_io > size || len >= size - *used_io) {
+		return 0;
+	}
+	if (snprintf(message + *used_io, size - *used_io,
+	    "%s", text) != (int)len) {
+		return 0;
+	}
+	*used_io += len;
+	return 1;
+}
+
+// The panic-string digest of the lifecycle records, appended by
+// boot_progress_critical_exit after the persist, skip-setup and
+// census fields. Nothing is printed here; this only reads the
+// ring. The whole digest is read from ONE snapshot of the claim
+// counter and one of the flush cursor (the cursor clamped to the
+// claim snapshot, in case the two independent atomics race), so
+// its figures share a basis:
+//   kept        the claim snapshot capped at the ring size;
+//   evpending   kept slots whose writer had claimed the slot but
+//               not yet published it when read (skipped, never
+//               half-read; their kind is unknowable);
+//   evunflushed kept, published slots at or past the flush
+//               cursor in this snapshot: collected and
+//               published, but not confirmed printed — the
+//               cursor is only a sampling point, and printing
+//               may be in flight concurrently, so this is not a
+//               claim about the panic instant itself;
+//   evdrop      the snapshot beyond the ring size, derived from
+//               the snapshot rather than from the dropped
+//               counter, whose increment can lag its claim.
+// The first pass also freezes the ready/not-ready decision of
+// every kept slot into a 64-bit mask: a slot may publish while
+// the digest is being formatted, and the tuple pass must use the
+// same observed set as the counts above, not a second, different
+// one. The sbx value itself: one "#<seq>:0x<status>/<ns>/0x<code>"
+// tuple per slot that was a published SpringBoard exit in that
+// frozen set, in event order (raw hook arguments; reason presence
+// is not encoded in them — see the probe comment). When no
+// SpringBoard exit was published, the value is none-observed if
+// nothing is pending, and unresolved-pending when slots are
+// still unpublished, because an unpublished slot could be the
+// very exit being looked for and must not read as a definite
+// none.
+//
+// Space discipline: the exact suffix strings (evpending, evdrop,
+// evunflushed) are staged first, and the minimum digest — the
+// sbx head, the truncation marker, and every nonzero suffix — is
+// reserved before anything is written. A tuple is appended only
+// when it fits whole AND leaves that reserved room, and a refused
+// tuple sets sbx-truncated=1 in space the reservation guarantees.
+// If even the minimum cannot fit, the digest writes nothing at
+// all rather than a partial, misleading one.
+static void
+bp_ev_append_digest(char *message, size_t size, size_t *used_io)
+{
+	unsigned int claimed = __atomic_load_n(&bp_ev_claimed,
+	    __ATOMIC_ACQUIRE);
+	unsigned int flushed = __atomic_load_n(&bp_ev_flush_next,
+	    __ATOMIC_ACQUIRE);
+	unsigned int kept = claimed < BP_EV_CAP ? claimed : BP_EV_CAP;
+	unsigned int overflow = claimed > BP_EV_CAP ?
+	    claimed - BP_EV_CAP : 0;
+	unsigned int pending = 0;
+	unsigned int observed = 0;
+	unsigned int unflushed = 0;
+	unsigned int i;
+	uint64_t ready_mask = 0;
+	char pbuf[24];
+	char dbuf[24];
+	char ubuf[24];
+	int plen = 0;
+	int dlen = 0;
+	int ulen = 0;
+	unsigned int suffix_len = 0;
+
+	if (flushed > kept) {
+		flushed = kept;
+	}
+
+	for (i = 0; i < kept; i++) {
+		const struct bp_ev *ev = &bp_events[i];
+
+		if (!bp_ev_ready(ev)) {
+			pending++;
+			continue;
+		}
+		ready_mask |= (uint64_t)1 << i;
+		if (i >= flushed) {
+			unflushed++;
+		}
+		if (ev->who == BP_WHO_SB && ev->kind == BP_EV_EXIT) {
+			observed++;
+		}
+	}
+
+	if (pending != 0) {
+		plen = snprintf(pbuf, sizeof(pbuf), " evpending=%u",
+		    pending);
+		if (plen < 0 || (size_t)plen >= sizeof(pbuf)) {
+			return;
+		}
+		suffix_len += (unsigned int)plen;
+	}
+	if (overflow != 0) {
+		dlen = snprintf(dbuf, sizeof(dbuf), " evdrop=%u",
+		    overflow);
+		if (dlen < 0 || (size_t)dlen >= sizeof(dbuf)) {
+			return;
+		}
+		suffix_len += (unsigned int)dlen;
+	}
+	if (unflushed != 0) {
+		ulen = snprintf(ubuf, sizeof(ubuf), " evunflushed=%u",
+		    unflushed);
+		if (ulen < 0 || (size_t)ulen >= sizeof(ubuf)) {
+			return;
+		}
+		suffix_len += (unsigned int)ulen;
+	}
+
+	if (observed == 0) {
+		const char *head = pending != 0 ?
+		    " sbx=unresolved-pending" : " sbx=none-observed";
+		size_t head_len = 0;
+
+		while (head[head_len] != '\0') {
+			head_len++;
+		}
+		if (*used_io > size ||
+		    head_len + (size_t)suffix_len >= size - *used_io) {
+			return;
+		}
+		if (!bp_append_whole(message, size, used_io, head)) {
+			return;
+		}
+	} else {
+		static const char prefix[] = " sbx=";
+		static const char marker[] = " sbx-truncated=1";
+		size_t prefix_len = sizeof(prefix) - 1;
+		size_t marker_len = sizeof(marker) - 1;
+		unsigned int printed = 0;
+		int truncated = 0;
+
+		if (*used_io > size ||
+		    prefix_len + marker_len + (size_t)suffix_len >=
+		    size - *used_io) {
+			return;
+		}
+		if (!bp_append_whole(message, size, used_io, prefix)) {
+			return;
+		}
+
+		for (i = 0; i < kept; i++) {
+			const struct bp_ev *ev = &bp_events[i];
+			char tuple[64];
+			int tlen;
+
+			if ((ready_mask & ((uint64_t)1 << i)) == 0 ||
+			    ev->who != BP_WHO_SB || ev->kind != BP_EV_EXIT) {
+				continue;
+			}
+			tlen = snprintf(tuple, sizeof(tuple),
+			    "%s#%u:0x%x/%u/0x%llx",
+			    printed == 0 ? "" : ",", ev->seq,
+			    (unsigned int)ev->status, ev->ns,
+			    (unsigned long long)ev->code);
+			if (tlen < 0 || (size_t)tlen >= sizeof(tuple)) {
+				truncated = 1;
+				break;
+			}
+			if (*used_io > size ||
+			    (size_t)tlen + marker_len +
+			    (size_t)suffix_len >= size - *used_io) {
+				truncated = 1;
+				break;
+			}
+			if (!bp_append_whole(message, size, used_io, tuple)) {
+				truncated = 1;
+				break;
+			}
+			printed++;
+		}
+		if (truncated &&
+		    !bp_append_whole(message, size, used_io, marker)) {
+			// The reservation above makes this unreachable
+			// unless the caller's size/used contract is
+			// violated.
+			return;
+		}
+	}
+
+	if (plen > 0 && !bp_append_whole(message, size, used_io, pbuf)) {
+		return;
+	}
+	if (dlen > 0 && !bp_append_whole(message, size, used_io, dbuf)) {
+		return;
+	}
+	if (ulen > 0 && !bp_append_whole(message, size, used_io, ubuf)) {
+		return;
 	}
 }
 
@@ -267,14 +804,42 @@ boot_progress_critical_exit(int pid, char *message, unsigned long size)
 	snprintf(message + used, (size_t)size - used,
 	    " ui=sb:%u/%u,bb:%u/%u",
 	    bp_sb_stage, bp_sb_exit, bp_bb_stage, bp_bb_exit);
+	// Stage-2 lifecycle probe (chain60): the digest of the
+	// lifecycle records (see bp_ev_append_digest). Nothing is
+	// printed here; the records themselves reached the console
+	// stream through bp_ev_flush() at process exits.
+	used = 0;
+	while (used < (size_t)size && message[used] != '\0') {
+		used++;
+	}
+	if (used >= (size_t)size) {
+		return;
+	}
+	bp_ev_append_digest(message, (size_t)size, &used);
 }
 
 __attribute__((weak)) void
 boot_progress_process_stage(int pid, const char *name, const char *stage)
 {
-	(void)pid;
+	unsigned int who = bp_who(name);
+	unsigned int kind = 0;
+
 	if (bp_text_is(stage, "exec process signature enter")) {
 		bp_census_exec(name);
+		kind = BP_EV_SIG_ENTER;
+	} else if (bp_text_is(stage, "exec load_machfile enter")) {
+		kind = BP_EV_LM_ENTER;
+	} else if (bp_text_is(stage, "exec load_machfile returned")) {
+		kind = BP_EV_LM_RETURNED;
+	} else if (bp_text_is(stage, "exec process signature accepted")) {
+		kind = BP_EV_SIG_ACCEPTED;
+	} else if (bp_text_is(stage, "exec process signature REFUSED")) {
+		kind = BP_EV_SIG_REFUSED;
+	} else if (bp_text_is(stage, "exec MAC policy REFUSED")) {
+		kind = BP_EV_MAC_REFUSED;
+	}
+	if (who != 0 && kind != 0) {
+		bp_ev_record(who, kind, pid, 0, 0, 0);
 	}
 }
 
@@ -282,11 +847,12 @@ __attribute__((weak)) void
 boot_progress_exit(int pid, const char *name, int status, unsigned ns,
     uint64_t code)
 {
-	(void)pid;
-	(void)status;
-	(void)ns;
-	(void)code;
+	unsigned int who = bp_who(name);
+
 	bp_census_exit(name);
+	if (who != 0) {
+		bp_ev_record(who, BP_EV_EXIT, pid, status, ns, code);
+	}
 	// The persist counters are final before the first process exit
 	// (the attach ran before launchd). These rows are the
 	// console-stream copy, repeated on every exit; the copy the
@@ -309,4 +875,8 @@ boot_progress_exit(int pid, const char *name, int status, unsigned ns,
 	} else {
 		printf("fuxi persist counters unavailable\n");
 	}
+	// Stage-2 lifecycle probe: the one place records are printed,
+	// beside the persist rows above. This exit's own record was
+	// written before this point, so it is included in the flush.
+	bp_ev_flush();
 }
