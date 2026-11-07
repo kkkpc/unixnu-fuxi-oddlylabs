@@ -961,6 +961,14 @@ static size_t control_reply_reboot(char *reply, size_t capacity,
         !sxnu_control_writer_text(&writer, reason)) return 0;
     return sxnu_control_reply_finish(&writer);
 }
+/* Consumer adaptation (kkkpc/unixnu-fuxi-oddlylabs, log-only integration): the reset layer behind
+ * qcom_reset_request is not provided yet, so the control reboot commit path can be compiled out with
+ * -DQUD_CONTROL_REBOOT=0; both reboot verbs then answer ERR/unsupported instead of queueing a reset
+ * that would never happen. The default keeps upstream behaviour bit-for-bit, including in the host
+ * model tests, which extract this region and compile it without the define. */
+#ifndef QUD_CONTROL_REBOOT
+#define QUD_CONTROL_REBOOT 1
+#endif
 static void control_handle_frame(const struct sxnu_control_frame *frame,
                                  const struct qcom_usb_debug_status *status,
                                  uint32_t generation)
@@ -1041,6 +1049,7 @@ static void control_handle_frame(const struct sxnu_control_frame *frame,
         break;
     }
     case SXNU_CONTROL_VERB_REBOOT_FASTBOOT:
+#if QUD_CONTROL_REBOOT
         if (__atomic_load_n(&control_reboot_requested, __ATOMIC_ACQUIRE) ||
             __atomic_load_n(&control_reboot_taken, __ATOMIC_ACQUIRE))
             reply_bytes = control_reply_reboot(reply, sizeof(reply), frame, "ERR", "busy");
@@ -1048,8 +1057,12 @@ static void control_handle_frame(const struct sxnu_control_frame *frame,
             reply_bytes = control_reply_reboot(reply, sizeof(reply), frame, "OK", "queued");
             reboot_accepted = 1;
         }
+#else
+        reply_bytes = control_reply_reboot(reply, sizeof(reply), frame, "ERR", "unsupported");
+#endif
         break;
     case SXNU_CONTROL_VERB_REBOOT:
+#if QUD_CONTROL_REBOOT
         /* No hook precondition: the reset layer performs the reset itself, so a plain reboot answers
          * like the bootloader one. Only the wire rules remain. */
         if (__atomic_load_n(&control_reboot_requested, __ATOMIC_ACQUIRE) ||
@@ -1059,6 +1072,9 @@ static void control_handle_frame(const struct sxnu_control_frame *frame,
             reply_bytes = control_reply_reboot(reply, sizeof(reply), frame, "OK", "queued");
             reboot_accepted = 1;
         }
+#else
+        reply_bytes = control_reply_reboot(reply, sizeof(reply), frame, "ERR", "unsupported");
+#endif
         break;
     default:
         return;
@@ -1075,6 +1091,7 @@ static void control_handle_frame(const struct sxnu_control_frame *frame,
     if (shot_bytes) (void)qcom_usb_shot_commit(shot_bytes);
     if ((accepted == SXNU_CONTROL_VERB_REBOOT ||
          accepted == SXNU_CONTROL_VERB_REBOOT_FASTBOOT) && reboot_accepted) {
+#if QUD_CONTROL_REBOOT
         __atomic_store_n(&qcom_usb_debug_control_fastboot,
                          accepted == SXNU_CONTROL_VERB_REBOOT_FASTBOOT ? 1u : 0u, __ATOMIC_RELEASE);
         qcom_usb_shot_cancel();
@@ -1098,6 +1115,9 @@ static void control_handle_frame(const struct sxnu_control_frame *frame,
             (void)qcom_usb_debug_control_take_reboot();
             (void)qcom_reset_request(accepted == SXNU_CONTROL_VERB_REBOOT_FASTBOOT ? 1 : 0);
         }
+#else
+        (void)generation;   /* only the compiled-out commit path uses it */
+#endif
     }
 }
 static void control_service(const uint8_t *bytes, size_t count, uint32_t generation,
@@ -1149,7 +1169,9 @@ int qcom_usb_debug_control_start(void)
     usb_control_context.state.generation = dwc3_rx_generation(native.core);
     control_rotate_session_owned();
     release(flags);
-    installed = QUD_PSCI_SMC_RESET &&
+    /* Log-only integration (QUD_CONTROL_REBOOT=0): the PE reset hook stays uninstalled as well, so
+     * the module owns no reset path at all until the reset layer lands. Default 1 is upstream. */
+    installed = QUD_CONTROL_REBOOT && QUD_PSCI_SMC_RESET &&
                 __atomic_compare_exchange_n(&PE_halt_restart, &halt_expected,
                   qcom_usb_control_halt_restart, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE);
     __atomic_store_n(&control_hook_owned, installed ? 1u : 0u, __ATOMIC_RELEASE);
