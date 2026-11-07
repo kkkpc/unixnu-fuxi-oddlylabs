@@ -86,6 +86,12 @@ char fuxi_legacy_properties[4096];
 
 // ---------------------------------------------------------------------------
 // The 18 component callbacks (observation-only; see the file header).
+// The component declares every one of them extern "C"
+// (NativeLegacyDisplay.cpp), so the definitions must carry C linkage:
+// as plain C++ definitions their symbols are mangled and the kernel
+// link fails on the component's _native_legacy_* imports (Build #95).
+
+extern "C" {
 
 __attribute__((noreturn)) void native_legacy_backend_guard(unsigned slot, void *object, void *caller) {
     fuxi_legacy_guard_slot = slot;
@@ -215,6 +221,8 @@ void native_legacy_vsync_observed(unsigned event, unsigned hz) {
     if (event < 6) fuxi_legacy_vsync_events[event] = fuxi_legacy_vsync_events[event] + 1;
     fuxi_legacy_vsync_hz = hz;
 }
+
+}  // extern "C" (the 18 component callbacks above)
 
 // ---------------------------------------------------------------------------
 // Early probe: register the component metaclasses once, allocate and
