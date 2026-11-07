@@ -27,9 +27,16 @@ Build-time identity gates, all hard failures:
     record's family_text_sha256;
   * the compiled component object's vtable matches the record
     (owned entries are the component's own methods or guarded
-    abstract leaves; original-class entries resolve to record
-    bindings at the record's addresses), and the object's undefined
-    original/binding imports are exactly the record's binding set.
+    abstract leaves; original-class entries resolve to bindings at
+    the record's addresses), and the object's undefined
+    original/binding imports are exactly the binding set. Bindings
+    come from the record's bindings map plus derivations from the
+    record's own method table in the accounted forms implemented
+    below (the slot-21 init alias, exact opaque slot names,
+    compiler-verified named methods at cross-checked slots, and
+    qualified base calls matched to the component's override twin
+    at the same slot); anything else refuses, and Gate 3 prints the
+    complete violation list before failing.
 
 The archive contains exactly three members: the late-ified component
 object, the generated original-bindings object, and the board glue
@@ -126,8 +133,9 @@ require('original_client_initializer' not in json.dumps(bindings),
 # audit qualified init as a standalone field. Slot 21 of the compiled
 # vtable names that symbol, and Gate 3 requires every original-class entry
 # to be backed by a binding, so map it explicitly — from the record only,
-# with both record fields required to agree. No other inherited method is
-# inferred this way.
+# with both record fields required to agree. The remaining inherited
+# methods are covered by the systematic derivation below, which works
+# from the same record method table under per-form accounting.
 LEGACY_INIT_SYMBOL = '__ZN25IOMobileFramebufferLegacy4initEP12OSDictionary'
 
 def apply_original_init_alias(bindings, audit):
@@ -142,6 +150,106 @@ def apply_original_init_alias(bindings, audit):
     return bindings
 
 bindings = apply_original_init_alias(bindings, audit)
+
+# The E2 record qualifies all 358 original addresses in its method table,
+# but its bindings map carries only the symbols the audit itself named.
+# Gate 3 needs a binding for every original-class symbol the compiled
+# object references: vtable entries for the original methods the
+# component does not override, and the undefined imports left by the
+# component's qualified base calls. Builds #93/#94 failed those entries
+# one at a time (slot 21, then slot 44); the fix is not another alias
+# per slot but one derivation pass over the whole table, in exactly
+# these accounted forms — every derived address is the record's own
+# method-table address for a cross-checked slot, and anything that
+# matches no form is left unbound for Gate 3 to refuse:
+#   * opaque slots: the generated header declares slot i (>= 168) as
+#     IOMobileFramebufferLegacy::opaque{i} unless the slot is named or
+#     abstract, so the compiled vtable names exactly
+#     __ZN25IOMobileFramebufferLegacy9opaque{i}Ev there;
+#   * named methods: manglings verified against the pinned class by
+#     compiling a probe translation unit with the kernel toolchain;
+#     each name must sit at its cross-checked slot (the three
+#     IOService-region overrides systemWillShutdown / probe /
+#     getWorkLoop occupy slots 79, 85, 111 in an order the builder
+#     does not need to fix, because it reads the symbol the compiler
+#     actually placed at each slot);
+#   * qualified base calls: a stray original-class import is derived
+#     only when it is the exact twin — same mangling with the class
+#     segment exchanged — of the component's own override sitting in
+#     the compiled vtable at a single slot.
+# Where the record carries a standalone field for a slot (init, start,
+# stop, newUserClient), the method-table address must agree with it.
+NAMED_SLOT_BINDINGS = {
+    '__ZN25IOMobileFramebufferLegacy13setPropertiesEP8OSObject': (44,),
+    '__ZN25IOMobileFramebufferLegacy20getDisplayDimensionsEPjS0_': (249,),
+    '__ZN25IOMobileFramebufferLegacy19completeCurrentSwapEv': (295,),
+    '__ZN25IOMobileFramebufferLegacy17applyStateRequestEP26OriginalLegacyStateRequestb': (354,),
+}
+NAMED_SLOT_GROUP = {
+    '__ZN25IOMobileFramebufferLegacy18systemWillShutdownEj': (79, 85, 111),
+    '__ZN25IOMobileFramebufferLegacy5probeEP9IOServicePi': (79, 85, 111),
+    '__ZNK25IOMobileFramebufferLegacy11getWorkLoopEv': (79, 85, 111),
+}
+STANDALONE_FIELDS = {21: 'original_init', 86: 'original_start',
+                     87: 'original_stop', 141: 'original_new_user_client'}
+
+
+def opaque_symbol(slot):
+    return f'__ZN25IOMobileFramebufferLegacy9opaque{slot}Ev'
+
+
+def derive_missing_bindings(bindings, audit, compiled, undefined):
+    """Derive the bindings Gate 3 needs from the record method table.
+
+    Mutates `bindings`; returns (derived, violations) where derived maps
+    each new symbol to {'slot', 'address', 'provenance'} and violations
+    lists every accounting failure found (derivation itself never
+    guesses: an unaccounted symbol is simply not derived)."""
+    methods = audit['methods']
+    derived = {}
+    violations = []
+
+    def account(slot, name, provenance):
+        address = int(methods[slot]['address'], 16)
+        field = STANDALONE_FIELDS.get(slot)
+        if field is not None and int(audit[field], 16) != address:
+            violations.append(
+                f'slot {slot} ({name}): record field {field} disagrees with the method table')
+            return
+        if name in bindings:
+            if bindings[name] != address:
+                violations.append(
+                    f'slot {slot} ({name}): derived address conflicts with the existing binding')
+            return
+        bindings[name] = address
+        derived[name] = {'slot': slot, 'address': hex(address), 'provenance': provenance}
+
+    for slot, name in enumerate(compiled):
+        if not name or '25IOMobileFramebufferLegacy' not in name:
+            continue
+        if slot >= 168 and name == opaque_symbol(slot):
+            account(slot, name, 'opaque slot: exact generated prototype name for this slot')
+        elif name in NAMED_SLOT_BINDINGS and slot in NAMED_SLOT_BINDINGS[name]:
+            account(slot, name, 'named original method at its cross-checked slot')
+        elif name in NAMED_SLOT_GROUP and slot in NAMED_SLOT_GROUP[name]:
+            account(slot, name, 'named IOService-region override (slots 79/85/111 set)')
+
+    twins = {}
+    for slot, name in enumerate(compiled):
+        if not name:
+            continue
+        for own, orig in (('__ZN19NativeLegacyDisplay', '__ZN25IOMobileFramebufferLegacy'),
+                          ('__ZNK19NativeLegacyDisplay', '__ZNK25IOMobileFramebufferLegacy')):
+            if name.startswith(own):
+                twins.setdefault(name.replace(own, orig, 1), []).append(slot)
+    for name in sorted(n for n in undefined
+                       if 'IOMobileFramebufferLegacy' in n and n not in bindings):
+        slots = twins.get(name, [])
+        if len(slots) == 1:
+            account(slots[0], name,
+                    'qualified base call: twin of the component override at this slot')
+    return derived, violations
+
 
 # --- Gate 2: locate the verification original in the actual tree ------------
 # Framework layout (scripts/unixnu/config.py, scripts/unixnu/ipsw.py): the
@@ -340,27 +448,41 @@ compiled = [relocations.get(vtable + 16 + i * 8) for i in range(358)]
 require(all(compiled) and vtable + 16 + 358 * 8 not in relocations, 'Exact owned 358-entry vtable')
 
 # --- Gate 3: the compiled vtable against the record --------------------------
+undefined = {n for n, _, k in symbols if k == 1}
+derived_bindings, violations = derive_missing_bindings(bindings, audit, compiled, undefined)
+for name in sorted(derived_bindings, key=lambda n: derived_bindings[n]['slot']):
+    entry = derived_bindings[name]
+    print(f"fuxi-legacy: derived binding slot {entry['slot']} {name} -> {entry['address']} "
+          f"({entry['provenance']})")
+print(f'fuxi-legacy: {len(derived_bindings)} binding(s) derived from the record method table')
 owned, inherited = [], []
 for i, name in enumerate(compiled):
     expected = int(methods[i]['address'], 16)
     if name.startswith(('__ZN19NativeLegacyDisplay', '__ZNK19NativeLegacyDisplay')):
         owned.append(i)
-        require(i in OWNED_CONCRETE or i in pure,
-                f'Component overrides an unqualified slot {i}')
+        if i not in OWNED_CONCRETE and i not in pure:
+            violations.append(f'Component overrides an unqualified slot {i}')
     elif '25IOMobileFramebufferLegacy' in name:
-        require(name in bindings, f'Original-class vtable entry {i} ({name}) has no record binding')
-        require(bindings[name] == expected,
+        if name not in bindings:
+            violations.append(f'Original-class vtable entry {i} ({name}) has no record binding')
+        elif bindings[name] != expected:
+            violations.append(
                 f'Original-class vtable entry {i} ({name}) disagrees with the record address')
-        inherited.append(i)
+        else:
+            inherited.append(i)
     elif i in pure:
-        require(name == '___cxa_pure_virtual',
-                f'Abstract slot {i} resolves to unexpected target {name}')
+        if name != '___cxa_pure_virtual':
+            violations.append(f'Abstract slot {i} resolves to unexpected target {name}')
     else:
-        require(i < 168, f'Unclassified original-region vtable entry {i}: {name}')
-        if candidate_names is not None:
-            require(candidate_names.get(name) == expected,
-                    f'Inherited native base symbol {i} ({name}) disagrees with the candidate')
-undefined = {n for n, _, k in symbols if k == 1}
+        if i >= 168:
+            violations.append(f'Unclassified original-region vtable entry {i}: {name}')
+        elif candidate_names is not None and candidate_names.get(name) != expected:
+            violations.append(
+                f'Inherited native base symbol {i} ({name}) disagrees with the candidate')
+if violations:
+    for violation in violations:
+        print(f'fuxi-legacy: GATE 3 VIOLATION: {violation}')
+    raise SystemExit(f'Gate 3 failed: {len(violations)} violation(s), listed above in full')
 require(set(bindings) <= undefined,
         'Component object does not import every record binding: '
         + ', '.join(sorted(set(bindings) - undefined)))
@@ -436,6 +558,15 @@ sources = [ROOT / 'drivers/GopFramebuffer/NativeLegacyDisplay.cpp',
     compiled_object_sha256=sha(obj), late_object_sha256=sha(late),
     glue_object_sha256=sha(glue_obj), archive_sha256=sha(archive),
     bindings={n: hex(v) for n, v in bindings.items()}, virtual_entries=358,
+    derived_bindings=derived_bindings,
+    derived_bindings_provenance='Bindings absent from the E2 record bindings map were derived '
+                                'from the record method table only, in the accounted forms '
+                                'documented at derive_missing_bindings (the slot-21 init alias, '
+                                'exact opaque slot names, compiler-verified named methods at '
+                                'cross-checked slots, qualified base calls matched to the '
+                                'component override twin at the same slot). Every derived '
+                                'address is the record address for its slot, cross-checked '
+                                'against the record standalone fields where one exists.',
     owned_entries=owned, inherited_original_entries=inherited,
     guarded_backend_leaves=[i for i in pure if i not in (213, 337)],
     header_layout_provenance='Class declaration, slot prototypes and original layout constants are the '
