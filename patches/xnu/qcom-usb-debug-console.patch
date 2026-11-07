@@ -1,0 +1,253 @@
+diff --git a/osfmk/console/serial_console.c b/osfmk/console/serial_console.c
+index e6d38d3..a83fb6f 100644
+--- a/osfmk/console/serial_console.c
++++ b/osfmk/console/serial_console.c
+@@ -46,6 +46,9 @@
+ #include <kern/cpu_data.h>
+ #include <kern/sched_prim.h>
+ #include <libkern/section_keywords.h>
++#if XNU_QCOM_USB_DEBUG
++#include <QcomXnuUsbDebug.h>
++#endif
+ 
+ #if __arm64__
+ #include <machine/machine_routines.h>
+@@ -523,6 +526,23 @@ console_resume()
+ void
+ console_write(char *str, int size)
+ {
++#if XNU_QCOM_USB_DEBUG
++	/* Capture raw formatted bytes before this function can reject them:
++	 * 10063 returns early when console output is disabled, ahead of the
++	 * ring, so the capture precedes that check. The native API accepts at
++	 * most 16 KiB per call; submit every chunk so a long console write
++	 * does not lose its suffix to that call budget.
++	 */
++	if (str != NULL) {
++		for (int offset = 0; offset < size;) {
++			int bytes = size - offset;
++			if (bytes > 16384) bytes = 16384;
++			(void)qcom_usb_debug_write(str + offset, (size_t)bytes);
++			offset += bytes;
++		}
++	}
++#endif
++
+ 	if (disableConsoleOutput) {
+ 		return;
+ 	}
+@@ -608,6 +628,13 @@ console_write(char *str, int size)
+ void
+ console_write_unbuffered(char c)
+ {
++#if XNU_QCOM_USB_DEBUG
++	/* Tee raw bytes once, before the selected console's CRLF expansion
++	 * and ahead of the disabled-output early return, which must not be
++	 * able to drop them.
++	 */
++	qcom_usb_debug_putc(c);
++#endif
+ 	if (disableConsoleOutput) {
+ 		return;
+ 	}
+diff --git a/osfmk/console/serial_general.c b/osfmk/console/serial_general.c
+index b1ca47a..ba8509e 100644
+--- a/osfmk/console/serial_general.c
++++ b/osfmk/console/serial_general.c
+@@ -169,7 +169,11 @@ console_printbuf_putc(int ch, void * arg)
+ 		 * if boot-arg 'drain_uart_sync=1' is set, then
+ 		 * drain all the buffer right now and append new ch
+ 		 */
+-		if (serialmode & SERIALMODE_SYNCDRAIN) {
++		/* USB logging must not inherit newline-free printbuf truncation. */
++#if !XNU_QCOM_USB_DEBUG
++		if (serialmode & SERIALMODE_SYNCDRAIN)
++#endif
++		{
+ 			info->str[info->pos] = '\0';
+ 			console_write(info->str, info->pos);
+ 			info->pos            = 0;
+diff --git a/osfmk/kern/debug.c b/osfmk/kern/debug.c
+index e9daeed..dac0091 100644
+--- a/osfmk/kern/debug.c
++++ b/osfmk/kern/debug.c
+@@ -1126,6 +1126,10 @@ panic_with_thread_context(unsigned int reason, void *ctx, uint64_t debugger_opti
+ }
+ #endif /* defined (__x86_64__) */
+ 
++#if XNU_QCOM_USB_DEBUG
++#include <QcomXnuUsbDebug.h>
++#endif
++
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wmissing-noreturn"
+ void
+@@ -1134,6 +1138,10 @@ panic_trap_to_debugger(const char *panic_format_str, va_list *panic_args, unsign
+ {
+ #pragma clang diagnostic pop
+ 
++#if XNU_QCOM_USB_DEBUG
++	qcom_usb_debug_panic_prepare();
++#endif
++
+ #if defined(__x86_64__) && (DEVELOPMENT || DEBUG)
+ 	read_lbr();
+ #endif
+@@ -1239,6 +1247,9 @@ panic_trap_to_debugger(const char *panic_format_str, va_list *panic_args, unsign
+ void
+ panic_spin_forever(void)
+ {
++#if XNU_QCOM_USB_DEBUG
++	qcom_usb_debug_panic_drain();
++#endif
+ 	for (;;) {
+ #if defined(__arm__) || defined(__arm64__)
+ 		/* On arm32, which doesn't have a WFE timeout, this may not return.  But that should be OK on this path. */
+diff --git a/osfmk/kern/printf.c b/osfmk/kern/printf.c
+index aeac9d3..3c666f1 100644
+--- a/osfmk/kern/printf.c
++++ b/osfmk/kern/printf.c
+@@ -913,14 +913,35 @@ vprintf(const char *fmt, va_list ap)
+ 	return vprintf_internal(fmt, ap, __builtin_return_address(0));
+ }
+ 
++#if XNU_QCOM_USB_DEBUG
++#include <QcomXnuUsbDebug.h>
++/* The 10063 serial_console.c global is declared in no header. */
++extern int disableConsoleOutput;
++#endif
++
+ void
+ consdebug_putc(char c)
+ {
++#if XNU_QCOM_USB_DEBUG
++	/* A PE console fallback supplies the one console/USB emission below.
++	 * Other routes are captured centrally, or here if console is disabled.
++	 * 10063 moved the disableConsoleOutput guard into console_write, past
++	 * its capture point, so the guard is re-expressed here: calling the
++	 * write while disabled would capture the character a second time.
++	 */
++	const bool usb_via_pe_console = !console_is_serial() && !disable_serial_output &&
++	    PE_kputc == console_write_unbuffered;
++	if (disableConsoleOutput && !usb_via_pe_console) qcom_usb_debug_putc(c);
++	if (!usb_via_pe_console && !disableConsoleOutput)
++#endif
+ 	console_write_char(c);
+ 
+ 	debug_putc(c);
+ 
+ 	if (!console_is_serial() && !disable_serial_output) {
++#if XNU_QCOM_USB_DEBUG
++		if (PE_kputc && PE_kputc != qcom_usb_debug_putc)
++#endif
+ 		PE_kputc(c);
+ 	}
+ }
+@@ -928,11 +949,26 @@ consdebug_putc(char c)
+ void
+ consdebug_putc_unbuffered(char c)
+ {
++#if XNU_QCOM_USB_DEBUG
++	/* A PE console fallback supplies the one console/USB emission below.
++	 * Other routes are captured centrally, or here if console is disabled.
++	 * 10063 moved the disableConsoleOutput guard into console_write, past
++	 * its capture point, so the guard is re-expressed here: calling the
++	 * write while disabled would capture the character a second time.
++	 */
++	const bool usb_via_pe_console = !console_is_serial() && !disable_serial_output &&
++	    PE_kputc == console_write_unbuffered;
++	if (disableConsoleOutput && !usb_via_pe_console) qcom_usb_debug_putc(c);
++	if (!usb_via_pe_console && !disableConsoleOutput)
++#endif
+ 	console_write_unbuffered(c);
+ 
+ 	debug_putc(c);
+ 
+ 	if (!console_is_serial() && !disable_serial_output) {
++#if XNU_QCOM_USB_DEBUG
++		if (PE_kputc && PE_kputc != qcom_usb_debug_putc)
++#endif
+ 		PE_kputc(c);
+ 	}
+ }
+diff --git a/pexpert/arm/pe_kprintf.c b/pexpert/arm/pe_kprintf.c
+index 65144c7..a33d6fb 100644
+--- a/pexpert/arm/pe_kprintf.c
++++ b/pexpert/arm/pe_kprintf.c
+@@ -12,6 +12,10 @@
+ #include <kern/simple_lock.h>
+ #include <os/log_private.h>
+ #include <libkern/section_keywords.h>
++#if XNU_QCOM_USB_DEBUG
++#include <QcomXnuUsbDebug.h>
++#endif
++
+ 
+ /* Globals */
+ typedef void (*PE_kputc_t)(char);
+@@ -26,6 +30,24 @@ SECURITY_READ_ONLY_LATE(bool) disable_kprintf_output = true;
+ SECURITY_READ_ONLY_LATE(bool) disable_iolog_serial_output = false;
+ SECURITY_READ_ONLY_LATE(bool) enable_dklog_serial_output = false;
+ 
++#if XNU_QCOM_USB_DEBUG
++static bool qcom_usb_debug_kprintf_requested;
++static void
++qcom_usb_tee(char c)
++{
++	/* The fallback console sink performs its own raw USB tee. */
++	if (PE_kputc == console_write_unbuffered) {
++		PE_kputc(c);
++		return;
++	}
++	qcom_usb_debug_putc(c);
++	if (PE_kputc && PE_kputc != qcom_usb_debug_putc) PE_kputc(c);
++}
++#define QCOM_USB_DEBUG_KPRINTF_PUTC qcom_usb_tee
++#else
++#define QCOM_USB_DEBUG_KPRINTF_PUTC PE_kputc
++#endif
++
+ static SIMPLE_LOCK_DECLARE(kprintf_lock, 0);
+ 
+ static void serial_putc_crlf(char c);
+@@ -50,6 +72,11 @@ PE_init_kprintf_config(void)
+ 		disable_kprintf_output = false;
+ 	}
+ #endif
++#if XNU_QCOM_USB_DEBUG
++	/* Defer requested verbose output until the early sink is installed. */
++	qcom_usb_debug_kprintf_requested = !disable_kprintf_output;
++	disable_kprintf_output = true;
++#endif
+ }
+ // Do this early, so other code can depend on whether kprintf is enabled.
+ STARTUP(TUNABLES, STARTUP_RANK_LAST, PE_init_kprintf_config);
+@@ -68,6 +95,10 @@ PE_init_kprintf(void)
+ 		 */
+ 		PE_kputc = console_write_unbuffered;
+ 	}
++#if XNU_QCOM_USB_DEBUG
++	if (qcom_usb_debug_init()) PE_kputc = qcom_usb_debug_putc;
++	disable_kprintf_output = !qcom_usb_debug_kprintf_requested;
++#endif
+ }
+ STARTUP(KPRINTF, STARTUP_RANK_FIRST, PE_init_kprintf);
+ 
+@@ -78,7 +109,7 @@ _kprintf(const char *format, ...)
+ 	va_list         listp;
+ 
+ 	va_start(listp, format);
+-	_doprnt_log(format, &listp, PE_kputc, 16);
++	_doprnt_log(format, &listp, QCOM_USB_DEBUG_KPRINTF_PUTC, 16);
+ 	va_end(listp);
+ }
+ #define MP_DEBUG_KPRINTF(x...)  _kprintf(x)
+@@ -121,7 +152,7 @@ kprintf(const char *fmt, ...)
+ 			cpu_last_locked = cpu_number();
+ 		}
+ 
+-		_doprnt_log(fmt, &listp, PE_kputc, 16);
++		_doprnt_log(fmt, &listp, QCOM_USB_DEBUG_KPRINTF_PUTC, 16);
+ 
+ 		simple_unlock(&kprintf_lock);
+ 

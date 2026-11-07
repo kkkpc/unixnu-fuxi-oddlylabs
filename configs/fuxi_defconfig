@@ -56,5 +56,8 @@ CONFIG_XNU_SHENG_PMGR=y
 CONFIG_XNU_NATIVE_RAM_BLOCK=y
 # bsd_init calls native_touch_probe() (patches/xnu/fuxi-touch-probe.patch); scripts/build-fuxi-touch.py builds it. The
 # HID digitizer (scripts/build-fuxi-hid-input.py) is force-loaded: its objects carry the absolute IOHIDDevice bindings and
-# the metaclass registration that kits/fuxi/FuxiHidProbe.cpp runs after IOHIDFamily is loaded.
-CONFIG_XNU_EXTRA_LD_ARCHIVES="{tree}/build/fuxi-touch/libFuxiTouch.a -Wl,-force_load,{tree}/build/sheng-hid-input/libShengHidInput.a"
+# the metaclass registration that kits/fuxi/FuxiHidProbe.cpp runs after IOHIDFamily is loaded. The QcomXnuUsbDebug
+# archive (scripts/build-fuxi-usb-debug.py, the vendored ljhhkx529 module at drivers/QcomXnuUsbDebug) is force-loaded
+# the same way: the patched console/kprintf/panic units call into it, and force-loading keeps its singleton state and
+# control hooks present regardless of which hook a given build exercises.
+CONFIG_XNU_EXTRA_LD_ARCHIVES="{tree}/build/fuxi-touch/libFuxiTouch.a -Wl,-force_load,{tree}/build/sheng-hid-input/libShengHidInput.a -Wl,-force_load,{tree}/build/qcom-usb-debug/libQcomXnuUsbDebug.a"
