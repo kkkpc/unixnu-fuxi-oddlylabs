@@ -249,6 +249,15 @@ static int policy_setup_done(proc_t p,uint64_t scratch) {
  return 0;
 }
 
+// The writer's outcome, exported for FuxiBootProgress.c, which appends it to the photographed
+// panic string next to the persist counters: the writer's own printf lines live only in the
+// console stream and never reach that page, so chain58's photograph could not prove the writer
+// ran. result is -1 until the writer runs, then its first collected error (0 = the profile is
+// in place); probe is -2 until it runs, then policy_setup_done's value (-1 unreadable, 0 Setup
+// was not done and the writer wrote, 1 Setup already done and nothing was written).
+volatile int sheng_skip_setup_result=-1;
+volatile int sheng_skip_setup_probe=-2;
+
 // sheng-skip-setup=1: write the skip-setup profile into the mounted (persistent) Data volume. The
 // caller ignores this function's return value on purpose: the policy's own return value panics
 // load_init_program, and a preference write must never be able to stop a boot. The worst outcome of
@@ -256,7 +265,8 @@ static int policy_setup_done(proc_t p,uint64_t scratch) {
 static int sheng_boot_skip_setup(proc_t p,uint64_t scratch) {
  const char *dir="/private/var/mobile/Library/Preferences";
  int probe=policy_setup_done(p,scratch);
- if(probe==1){printf("sheng skip-setup: Setup already done, preferences left alone\n");return 0;}
+ sheng_skip_setup_probe=probe;
+ if(probe==1){sheng_skip_setup_result=0;printf("sheng skip-setup: Setup already done, preferences left alone\n");return 0;}
  int first=0,error=policy_mkdir_chain(p,scratch,dir);if(error)first=error;
  for(unsigned i=0;i<sizeof(skip_setup_prefs)/sizeof(skip_setup_prefs[0]);++i) {
   char path[256];
@@ -269,6 +279,7 @@ static int sheng_boot_skip_setup(proc_t p,uint64_t scratch) {
  static const char *const containers[]={"/private/var/containers/Bundle","/private/var/containers/Data/System","/private/var/containers/Shared/SystemGroup","/private/var/containers/Temp"};
  for(unsigned i=0;i<sizeof(containers)/sizeof(containers[0]);++i){error=policy_mkdir_chain(p,scratch,containers[i]);if(error && !first)first=error;}
  printf("sheng skip-setup preferences: %d (probe %d)\n",first,probe);
+ sheng_skip_setup_result=first;
  return first;
 }
 

@@ -24,7 +24,14 @@
 // reads those counters and the attach's IOLog lines scroll off long
 // before the exit report, so without this the persist stage's result
 // is invisible on the only evidence source the board has, the
-// photographed screen. The history matters: the first version printed
+// A second exception since the UI stage (2026-11-07): the same append
+// now also carries the skip-setup writer's outcome (weak imports from
+// BootWatchdogPolicy.c) and a two-process UI census (SpringBoard and
+// backboardd exec/exit counts, taken in the process-stage and exit
+// hooks below). chain58's boots proved the pattern's limit — its
+// photograph could neither confirm the writer ran nor say whether
+// the UI processes ever started — so both answers now ride the panic
+// string too. The history matters: the first version printed
 // once, at the first exit, and chain52's photograph showed the rows
 // had scrolled off; printing on every exit (chain53) still showed
 // none, because the photographed page is the panic page that
@@ -58,6 +65,67 @@ extern volatile uint64_t native_data_persist_syncs __attribute__((weak_import));
 extern volatile uint64_t native_data_persist_errors __attribute__((weak_import));
 extern volatile uint64_t native_data_persist_first_lba __attribute__((weak_import));
 extern volatile uint64_t native_data_persist_present __attribute__((weak_import));
+
+// Skip-setup writer outcome (BootWatchdogPolicy.c): weak imports, the
+// same pattern as the persist counters above, so this observer still
+// links if the policy archive ever drops them. result: -1 = the
+// writer never ran (argument off or not reached), otherwise the first
+// error it collected (0 = the profile is in place). probe: -2 =
+// never ran, -1 = the existing purplebuddy plist could not be read,
+// 0 = Setup was not done and the writer wrote, 1 = Setup already
+// done, nothing written.
+extern volatile int sheng_skip_setup_result __attribute__((weak_import));
+extern volatile int sheng_skip_setup_probe __attribute__((weak_import));
+
+// Stage-2 UI census: exec and exit counts for the two processes that
+// would have to run before anything graphical can appear, SpringBoard
+// and backboardd. The patch hands every exec stage and every exit to
+// this observer with the process name (p_name), so the census needs
+// no process-list walk and no locking: the stage hook counts an exec
+// when it reaches the signature stage (the note point UniXNU-sheng's
+// census uses), the exit hook counts the exit. The name and stage
+// compares are hand-rolled: this file deliberately uses nothing
+// beyond the printf/snprintf its header already declares.
+static volatile unsigned int bp_sb_stage;
+static volatile unsigned int bp_sb_exit;
+static volatile unsigned int bp_bb_stage;
+static volatile unsigned int bp_bb_exit;
+
+static int
+bp_text_is(const char *text, const char *want)
+{
+	if (text == NULL) {
+		return 0;
+	}
+	while (*want != '\0') {
+		if (*text != *want) {
+			return 0;
+		}
+		text++;
+		want++;
+	}
+	return *text == '\0';
+}
+
+static void
+bp_census_exec(const char *name)
+{
+	if (bp_text_is(name, "SpringBoard")) {
+		bp_sb_stage++;
+	} else if (bp_text_is(name, "backboardd")) {
+		bp_bb_stage++;
+	}
+}
+
+static void
+bp_census_exit(const char *name)
+{
+	if (bp_text_is(name, "SpringBoard")) {
+		bp_sb_exit++;
+	} else if (bp_text_is(name, "backboardd")) {
+		bp_bb_exit++;
+	}
+}
 
 __attribute__((weak)) void
 boot_progress_init(void)
@@ -166,14 +234,48 @@ boot_progress_critical_exit(int pid, char *message, unsigned long size)
 		snprintf(message + used, (size_t)size - used,
 		    " fuxi persist counters unavailable");
 	}
+	// Stage-2 observability (chain59): the skip-setup writer's
+	// outcome and the UI census ride the same string, for the same
+	// reason as the persist counters — both live only in the console
+	// stream otherwise, which the photographed panic page never
+	// shows. chain58's two boots left both questions open: the store
+	// growth was consistent with the writer having run but proved
+	// nothing, and the owner's watched boot showed no graphical
+	// frame at any point without saying whether the UI processes
+	// ever started.
+	used = 0;
+	while (used < (size_t)size && message[used] != '\0') {
+		used++;
+	}
+	if (used >= (size_t)size) {
+		return;
+	}
+	if (&sheng_skip_setup_result) {
+		snprintf(message + used, (size_t)size - used,
+		    " sksu=%d/%d",
+		    sheng_skip_setup_result, sheng_skip_setup_probe);
+	} else {
+		snprintf(message + used, (size_t)size - used, " sksu=na");
+	}
+	used = 0;
+	while (used < (size_t)size && message[used] != '\0') {
+		used++;
+	}
+	if (used >= (size_t)size) {
+		return;
+	}
+	snprintf(message + used, (size_t)size - used,
+	    " ui=sb:%u/%u,bb:%u/%u",
+	    bp_sb_stage, bp_sb_exit, bp_bb_stage, bp_bb_exit);
 }
 
 __attribute__((weak)) void
 boot_progress_process_stage(int pid, const char *name, const char *stage)
 {
 	(void)pid;
-	(void)name;
-	(void)stage;
+	if (bp_text_is(stage, "exec process signature enter")) {
+		bp_census_exec(name);
+	}
 }
 
 __attribute__((weak)) void
@@ -181,10 +283,10 @@ boot_progress_exit(int pid, const char *name, int status, unsigned ns,
     uint64_t code)
 {
 	(void)pid;
-	(void)name;
 	(void)status;
 	(void)ns;
 	(void)code;
+	bp_census_exit(name);
 	// The persist counters are final before the first process exit
 	// (the attach ran before launchd). These rows are the
 	// console-stream copy, repeated on every exit; the copy the
