@@ -61,3 +61,9 @@ CONFIG_XNU_NATIVE_RAM_BLOCK=y
 # the same way: the patched console/kprintf/panic units call into it, and force-loading keeps its singleton state and
 # control hooks present regardless of which hook a given build exercises.
 CONFIG_XNU_EXTRA_LD_ARCHIVES="{tree}/build/fuxi-touch/libFuxiTouch.a -Wl,-force_load,{tree}/build/sheng-hid-input/libShengHidInput.a -Wl,-force_load,{tree}/build/qcom-usb-debug/libQcomXnuUsbDebug.a"
+# The Legacy GOP display (CPU-first route, scripts/build-fuxi-legacy-display.py): the baseline compiles the
+# patched native_legacy_display_probe / native_legacy_display_late_probe call sites in and links
+# build/native-legacy-display/libNativeLegacyDisplay.late.a. The MobileDisplay path stays explicitly off:
+# its archive is a different one (build/gop-framebuffer) and the mobile class publishes nothing.
+CONFIG_XNU_NATIVE_LEGACY_DISPLAY=y
+CONFIG_XNU_NATIVE_MOBILE_DISPLAY=n

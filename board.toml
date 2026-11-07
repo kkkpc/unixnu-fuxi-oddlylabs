@@ -36,7 +36,7 @@ lba_bytes = 4096
 # and the ShengUfs component declares it as a dependency; no virtio-mmio device exists
 # in this board's device tree, so the driver never matches hardware here. VerifiedRoot
 # is the kit that supplies the policy machinery (kits/VerifiedRoot).
-include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch", "VirtioMmioBlock", "VerifiedRoot"]
+include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch", "VirtioMmioBlock", "VerifiedRoot", "GopFramebuffer"]
 
 [kernel]
 defconfig = "fuxi_defconfig"
@@ -69,6 +69,10 @@ archives = [
   "build-fuxi-ufs.py",
   "build-fuxi-touch.py",
   "build-fuxi-usb-debug.py",
+  # The Legacy GOP display archive (CPU-first route): binds the selected GopFramebuffer component's
+  # NativeLegacyDisplay to the original IOMobileFramebufferLegacy lifecycle using only fuxi's E2 ABI
+  # record; the baseline links it under CONFIG_XNU_NATIVE_LEGACY_DISPLAY.
+  "build-fuxi-legacy-display.py",
 ]
 
 [device_tree]
@@ -154,7 +158,12 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1",
                "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "fuxi-touch-panic=2", "native-ufs-root=1",
                "sheng-data-persist=2", "sheng-log-reserve=1024", "sheng-skip-setup=1", "sheng-lite=1",
-               "qcom-usb-debug=1", "qcom-usb-ctl=1"]
+               "qcom-usb-debug=1", "qcom-usb-ctl=1",
+               # Legacy GOP display, round 1 (registration/enumeration only): load the graphics family,
+               # permit the legacy probe and the component's registerService, enable the GOP backend,
+               # and run the phase-4 park-then-start flow. Presentation arguments (pm/validate/transfer/
+               # cpu-present/vsync) stay out until the E3 handoff evidence gate passes.
+               "offline-mobile-graphics-load=1", "offline-legacy-register=1", "offline-legacy-gop=1", "offline-legacy-phase=4"]
 
 [payload.adt]
 # Deliver the Data seed packed (DBRDISK1): DarwinBoot copies only the nonzero extents
