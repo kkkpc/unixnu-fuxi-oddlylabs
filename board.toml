@@ -152,7 +152,7 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # window sizing has one visible source).
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1",
                "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "fuxi-touch-panic=2", "native-ufs-root=1",
-               "sheng-data-persist=2", "sheng-log-reserve=1024"]
+               "sheng-data-persist=2", "sheng-log-reserve=1024", "sheng-skip-setup=1", "sheng-lite=1"]
 
 [payload.adt]
 # Deliver the Data seed packed (DBRDISK1): DarwinBoot copies only the nonzero extents
