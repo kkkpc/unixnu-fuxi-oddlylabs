@@ -50,9 +50,23 @@
 // happened and what the kernel actually saw at its exit, instead of
 // only how many launches the census counted. It is observe-only and
 // records raw hook arguments verbatim; see its own comment.
+//
+// A fourth exception (chain61, Phase 1 of the fault/KCDATA design):
+// the two user-fault hooks stop discarding the EL0 fault state the
+// trap path hands them and keep it in the fault records further
+// below, so a SpringBoard exit can be printed beside the machine
+// state of its own faults. See the fault section's own comment for
+// the capture and publication discipline.
 #include <stdint.h>
 #include <stddef.h>
 #include <kern/misc_protos.h>
+#include <arm/thread.h>
+#include <kern/task.h>
+
+// The fault capture runs in the trapping process's own context, so
+// these BSD helpers identify it without any process-list walk.
+extern int proc_selfpid(void);
+extern void proc_selfname(char *, int);
 
 // Data persistence counters (NativeRamBlock.cpp, an unchanged copy of
 // UniXNU RamBlock 4be2d7e): weak imports, exactly as UniXNU-sheng's
@@ -337,6 +351,277 @@ bp_ev_record(unsigned int who, unsigned int kind, int pid, int status,
 	}
 }
 
+// Stage-2 fault probe (chain61, Phase 1 of the fault/KCDATA
+// design): the boot-progress patch calls
+// boot_progress_user_breakpoint() where the ARM trap handler is
+// about to deliver EXC_ARM_BREAKPOINT, and
+// boot_progress_user_abort() in the user-abort path with the
+// fault address. Through chain60 both were weak no-op stubs in
+// this file, so the EL0 fault state reached them and was
+// discarded — chain60's stream holds fourteen signal-5
+// SpringBoard exits and not one fault record. The hooks now
+// capture the state under the discipline set for this phase:
+//
+//   - append-only: a fixed 32-slot array claimed in order and
+//     never wrapped; overflow only bumps the dropped counter, so
+//     evidence sequence numbers are never reused and no reader
+//     can meet a half-overwritten record;
+//   - the record carries its kind explicitly — the breakpoint
+//     hook's signature has no fault address, so a zero FAR
+//     cannot stand in for the kind;
+//   - only SpringBoard and backboardd records are kept. The
+//     trapping context is the faulting process itself, so
+//     proc_selfname identifies it without any traversal; every
+//     other process's fault only bumps a counter and can never
+//     evict the evidence this probe exists for;
+//   - capture fills every field first and publishes the slot's
+//     ready flag last with release semantics, exactly like the
+//     lifecycle records above; the trap path does no allocation,
+//     no blocking and no user-memory access;
+//   - printing happens only inside bp_ev_flush's single-owner
+//     pass below: the owner advances a cursor over the lifecycle
+//     records and, for each SpringBoard / backboardd exit it
+//     passes, prints that pid's not-yet-consumed fault records
+//     in claim order beside the exit's signal and ticks, marking
+//     each consumed as it goes. A record therefore prints at
+//     most once, only beside its own process's exit, and a later
+//     process reusing the pid can never inherit it.
+//
+// What is recorded is what is printed: kind, pid, fault ticks,
+// pc, lr, sp, fp, esr, far, the shared-region slide and
+// x0-x28 — the field set of the official user-fault-evidence
+// contract — plus the exit's signal and ticks on the same line.
+// The kernel prints raw values only: the esr is not decoded
+// here, and the pc is printed beside the slide, never minus it;
+// whether the pc lies in the shared region at all is a
+// host-side judgement. A fault line beside an exit is a
+// same-pid fault/exit correlation, not yet a claim that the two
+// are one exception chain; that judgement belongs to the
+// analysis, with the exit's signal first — only exits with
+// signal 5 enter the SIGTRAP attribution. The counters ride a
+// fuxi faultstat line printed once per processed target exit,
+// so the conditions under which "no fault record for this pid"
+// may be read as "not captured in this window" (no target
+// drops, no unavailable captures, nothing still pending) stay
+// checkable from the stream itself.
+
+#define BP_FLT_CAP	32u
+
+#define BP_FLT_BREAKPOINT	1u
+#define BP_FLT_ABORT		2u
+
+struct bp_flt {
+	unsigned int ready;	/* published last, release semantics */
+	unsigned int consumed;	/* written by the flush owner only */
+	unsigned int seq;
+	unsigned int kind;
+	unsigned int who;
+	int pid;
+	uint64_t ticks;
+	uint64_t pc;
+	uint64_t lr;
+	uint64_t sp;
+	uint64_t fp;
+	uint64_t esr;
+	uint64_t far;
+	uint64_t slide;
+	uint64_t x[29];
+};
+
+static struct bp_flt bp_faults[BP_FLT_CAP];
+static unsigned int bp_flt_claimed;
+static unsigned int bp_flt_dropped;
+static unsigned int bp_flt_bp_attempts;
+static unsigned int bp_flt_ab_attempts;
+static unsigned int bp_flt_other;
+static unsigned int bp_flt_unavail;
+static unsigned int bp_flt_consumed;
+static unsigned int bp_flt_ev_cursor;
+
+static unsigned int
+bp_flt_kept(void)
+{
+	unsigned int claimed = __atomic_load_n(&bp_flt_claimed,
+	    __ATOMIC_RELAXED);
+
+	return claimed < BP_FLT_CAP ? claimed : BP_FLT_CAP;
+}
+
+static int
+bp_flt_ready(const struct bp_flt *flt)
+{
+	return __atomic_load_n(&flt->ready, __ATOMIC_ACQUIRE) != 0;
+}
+
+static void
+bp_flt_capture(unsigned int kind, void *state, unsigned esr,
+    uint64_t fault_addr)
+{
+	char name[32];
+	unsigned int who;
+	unsigned int claimed;
+	struct bp_flt *flt;
+	arm_saved_state_t *saved = (arm_saved_state_t *)state;
+	unsigned int i;
+
+	if (kind == BP_FLT_BREAKPOINT) {
+		__atomic_fetch_add(&bp_flt_bp_attempts, 1,
+		    __ATOMIC_RELAXED);
+	} else {
+		__atomic_fetch_add(&bp_flt_ab_attempts, 1,
+		    __ATOMIC_RELAXED);
+	}
+	proc_selfname(name, (int)sizeof(name));
+	name[sizeof(name) - 1] = '\0';
+	who = bp_who(name);
+	if (who == 0) {
+		__atomic_fetch_add(&bp_flt_other, 1, __ATOMIC_RELAXED);
+		return;
+	}
+	if (saved == NULL || !is_saved_state64(saved)) {
+		__atomic_fetch_add(&bp_flt_unavail, 1,
+		    __ATOMIC_RELAXED);
+		return;
+	}
+	claimed = __atomic_fetch_add(&bp_flt_claimed, 1,
+	    __ATOMIC_RELAXED);
+	if (claimed >= BP_FLT_CAP) {
+		__atomic_fetch_add(&bp_flt_dropped, 1,
+		    __ATOMIC_RELAXED);
+		return;
+	}
+	flt = &bp_faults[claimed];
+	flt->seq = claimed + 1;
+	flt->kind = kind;
+	flt->who = who;
+	flt->pid = proc_selfpid();
+	flt->ticks = mach_absolute_time();
+	flt->pc = (uint64_t)get_saved_state_pc(saved);
+	flt->lr = (uint64_t)get_saved_state_lr(saved);
+	flt->sp = (uint64_t)get_saved_state_sp(saved);
+	flt->fp = (uint64_t)get_saved_state_fp(saved);
+	flt->esr = (uint64_t)esr;
+	flt->far = fault_addr;
+	flt->slide = (uint64_t)current_task()->task_shared_region_slide;
+	for (i = 0; i < 29; i++) {
+		flt->x[i] = (uint64_t)get_saved_state_reg(saved, i);
+	}
+	__atomic_store_n(&flt->ready, 1, __ATOMIC_RELEASE);
+}
+
+static void
+bp_flt_print(const struct bp_flt *flt, const struct bp_ev *exit_ev)
+{
+	char line[1408];
+	int len = snprintf(line, sizeof(line),
+	    "fuxi fault #%u %s kind=%s pid=%d ft=%llu pc=0x%llx"
+	    " lr=0x%llx sp=0x%llx fp=0x%llx esr=0x%llx far=0x%llx"
+	    " slide=0x%llx"
+	    " x0=0x%llx x1=0x%llx x2=0x%llx x3=0x%llx x4=0x%llx"
+	    " x5=0x%llx x6=0x%llx x7=0x%llx x8=0x%llx x9=0x%llx"
+	    " x10=0x%llx x11=0x%llx x12=0x%llx x13=0x%llx x14=0x%llx"
+	    " x15=0x%llx x16=0x%llx x17=0x%llx x18=0x%llx x19=0x%llx"
+	    " x20=0x%llx x21=0x%llx x22=0x%llx x23=0x%llx x24=0x%llx"
+	    " x25=0x%llx x26=0x%llx x27=0x%llx x28=0x%llx"
+	    " exit_sig=%d et=%llu\n",
+	    flt->seq, flt->who == BP_WHO_SB ? "sb" : "bb",
+	    flt->kind == BP_FLT_BREAKPOINT ? "bp" : "abort",
+	    flt->pid, (unsigned long long)flt->ticks,
+	    (unsigned long long)flt->pc, (unsigned long long)flt->lr,
+	    (unsigned long long)flt->sp, (unsigned long long)flt->fp,
+	    (unsigned long long)flt->esr, (unsigned long long)flt->far,
+	    (unsigned long long)flt->slide,
+	    (unsigned long long)flt->x[0], (unsigned long long)flt->x[1],
+	    (unsigned long long)flt->x[2], (unsigned long long)flt->x[3],
+	    (unsigned long long)flt->x[4], (unsigned long long)flt->x[5],
+	    (unsigned long long)flt->x[6], (unsigned long long)flt->x[7],
+	    (unsigned long long)flt->x[8], (unsigned long long)flt->x[9],
+	    (unsigned long long)flt->x[10], (unsigned long long)flt->x[11],
+	    (unsigned long long)flt->x[12], (unsigned long long)flt->x[13],
+	    (unsigned long long)flt->x[14], (unsigned long long)flt->x[15],
+	    (unsigned long long)flt->x[16], (unsigned long long)flt->x[17],
+	    (unsigned long long)flt->x[18], (unsigned long long)flt->x[19],
+	    (unsigned long long)flt->x[20], (unsigned long long)flt->x[21],
+	    (unsigned long long)flt->x[22], (unsigned long long)flt->x[23],
+	    (unsigned long long)flt->x[24], (unsigned long long)flt->x[25],
+	    (unsigned long long)flt->x[26], (unsigned long long)flt->x[27],
+	    (unsigned long long)flt->x[28],
+	    exit_ev->status & 0x7f, (unsigned long long)exit_ev->ticks);
+
+	if (len > 0 && (size_t)len < sizeof(line)) {
+		printf("%s", line);
+	}
+}
+
+static void
+bp_flt_print_stats(void)
+{
+	unsigned int kept = bp_flt_kept();
+	unsigned int pending = 0;
+	unsigned int i;
+
+	for (i = 0; i < kept; i++) {
+		const struct bp_flt *flt = &bp_faults[i];
+
+		if (bp_flt_ready(flt) && !flt->consumed) {
+			pending++;
+		}
+	}
+	printf("fuxi faultstat bp_att=%u ab_att=%u other=%u kept=%u"
+	    " drop=%u unavail=%u consumed=%u fpending=%u\n",
+	    __atomic_load_n(&bp_flt_bp_attempts, __ATOMIC_RELAXED),
+	    __atomic_load_n(&bp_flt_ab_attempts, __ATOMIC_RELAXED),
+	    __atomic_load_n(&bp_flt_other, __ATOMIC_RELAXED), kept,
+	    __atomic_load_n(&bp_flt_dropped, __ATOMIC_RELAXED),
+	    __atomic_load_n(&bp_flt_unavail, __ATOMIC_RELAXED),
+	    __atomic_load_n(&bp_flt_consumed, __ATOMIC_RELAXED),
+	    pending);
+}
+
+// Owner-only, called from bp_ev_flush's pass with that pass's
+// lifecycle snapshot: advance the fault cursor over the lifecycle
+// records and, for each target exit passed, print and consume
+// that pid's fault records, then print the counters. The cursor
+// stops at the first not-yet-published lifecycle slot, exactly
+// like the lifecycle scan itself, so a fault line can never
+// precede the exit line it belongs to.
+static void
+bp_flt_process(unsigned int kept)
+{
+	unsigned int cursor = __atomic_load_n(&bp_flt_ev_cursor,
+	    __ATOMIC_RELAXED);
+
+	while (cursor < kept) {
+		const struct bp_ev *ev = &bp_events[cursor];
+		unsigned int fkept;
+		unsigned int i;
+
+		if (!bp_ev_ready(ev)) {
+			break;
+		}
+		cursor++;
+		__atomic_store_n(&bp_flt_ev_cursor, cursor,
+		    __ATOMIC_RELAXED);
+		if (ev->kind != BP_EV_EXIT) {
+			continue;
+		}
+		fkept = bp_flt_kept();
+		for (i = 0; i < fkept; i++) {
+			struct bp_flt *flt = &bp_faults[i];
+
+			if (!bp_flt_ready(flt) || flt->consumed ||
+			    flt->pid != ev->pid) {
+				continue;
+			}
+			bp_flt_print(flt, ev);
+			flt->consumed = 1;
+			__atomic_fetch_add(&bp_flt_consumed, 1,
+			    __ATOMIC_RELAXED);
+		}
+		bp_flt_print_stats();
+	}
+}
+
 // Print every ready, not-yet-printed record, in sequence order.
 // Called only from boot_progress_exit, beside the persist rows.
 // One owner at a time prints, so the stream cannot show a later
@@ -417,6 +702,12 @@ bp_ev_flush(void)
 			__atomic_store_n(&bp_ev_flush_next, next,
 			    __ATOMIC_RELAXED);
 		}
+
+		// The fault records ride the same owner pass, after
+		// the lifecycle lines of this snapshot, so a fault
+		// line can never precede the exit line it belongs
+		// to and no second printer exists.
+		bp_flt_process(kept);
 
 		// Retain ownership and rescan if any contender arrived
 		// during this pass. Otherwise release. The CAS makes
@@ -719,16 +1010,13 @@ boot_progress_poll(void)
 __attribute__((weak)) void
 boot_progress_user_breakpoint(void *state, unsigned esr)
 {
-	(void)state;
-	(void)esr;
+	bp_flt_capture(BP_FLT_BREAKPOINT, state, esr, 0);
 }
 
 __attribute__((weak)) void
 boot_progress_user_abort(void *state, unsigned esr, uint64_t fault_addr)
 {
-	(void)state;
-	(void)esr;
-	(void)fault_addr;
+	bp_flt_capture(BP_FLT_ABORT, state, esr, fault_addr);
 }
 
 __attribute__((weak)) void
