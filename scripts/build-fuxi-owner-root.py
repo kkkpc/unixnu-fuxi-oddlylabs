@@ -37,6 +37,7 @@ need ".vroot" objects in a version-2 root image to replace.
 """
 import ctypes
 import hashlib
+import http.client
 import importlib.util
 import io
 import json
@@ -45,6 +46,8 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 import uuid
 import zipfile
@@ -63,6 +66,44 @@ IPSW_URL = ('https://updates.cdn-apple.com/2025SpringFCS/fullrestores/122-77166/
 HOST = ROOT / 'build/verified-root-host'
 KEYS = HOST / 'keys'
 BUNDLE = ROOT / 'build/verified-root-os-xnu-bundle/libVerifiedRootProbe.a'
+
+# Every CDN request is bounded: a stalled connection must fail loudly, never
+# wait forever. Build #98 (2026-11-08) sat in this archive for 2h50m because
+# the urlopen calls below carried no timeout at all, and the extraction
+# print was block-buffered away, so the step showed no output at all.
+HTTP_TIMEOUT = 30
+HTTP_RETRIES = 3
+
+
+def _retryable(error):
+    """Only recoverable network errors are retried; an HTTP 4xx other than
+    408/429 is a definitive answer and fails at once."""
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code in (408, 429) or error.code >= 500
+    return isinstance(error, (urllib.error.URLError, TimeoutError, ConnectionError,
+                              http.client.HTTPException))
+
+
+def _bounded(kind, request, consume):
+    """Run one CDN request under the retry bound and return consume(response).
+
+    The response is consumed inside the bound, so a transfer that stalls
+    mid-body is retried as a whole rather than waited on. The final failure
+    is logged with its URL, request kind and exception, then re-raised: the
+    build exits non-zero instead of hanging."""
+    for attempt in range(1, HTTP_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
+                return consume(response)
+        except Exception as error:
+            if attempt >= HTTP_RETRIES or not _retryable(error):
+                print(f'CDN {kind} request failed after {attempt} attempt(s): '
+                      f'{request.full_url}: {error!r}', flush=True)
+                raise
+            wait = 2 * attempt
+            print(f'CDN {kind} request attempt {attempt} failed: {error!r}; '
+                  f'retrying in {wait}s', flush=True)
+            time.sleep(wait)
 
 
 def run(command, **kwargs):
@@ -91,8 +132,8 @@ class RangeFile(io.RawIOBase):
     def __init__(self, url):
         self.url = url
         request = urllib.request.Request(url, method='HEAD')
-        with urllib.request.urlopen(request) as response:
-            self.size = int(response.headers['Content-Length'])
+        self.size = _bounded('HEAD', request,
+                             lambda response: int(response.headers['Content-Length']))
         self.position = 0
         self.cache = {}
 
@@ -116,8 +157,8 @@ class RangeFile(io.RawIOBase):
                 self.cache.clear()
             start = block_index * self.BLOCK
             request = urllib.request.Request(self.url, headers={'Range': f'bytes={start}-{start + self.BLOCK - 1}'})
-            with urllib.request.urlopen(request) as response:
-                self.cache[block_index] = response.read()
+            self.cache[block_index] = _bounded('Range GET', request,
+                                               lambda response: response.read())
         block = self.cache[block_index]
         take = min(len(buffer), len(block) - offset, self.size - self.position)
         buffer[:take] = block[offset:offset + take]
@@ -130,7 +171,7 @@ TARGETS.mkdir(parents=True, exist_ok=True)
 for path, expected in ((OS_DMG, OS_DMG_SHA256), (SYSTEMOS_DMG, SYSTEMOS_IMAGE_SHA256)):
     if path.is_file() and sha256(path) == expected:
         continue
-    print(f'extracting {path.name} from the IPSW (range requests)')
+    print(f'extracting {path.name} from the IPSW (range requests)', flush=True)
     with zipfile.ZipFile(RangeFile(IPSW_URL)) as archive:
         member = next(name for name in archive.namelist() if Path(name).name == path.name)
         with archive.open(member) as source, path.open('wb') as target:
@@ -237,7 +278,7 @@ report = dict(image_bytes=int(view.image_bytes), blocks_verified=int(view.block_
               real_c_signature_and_block_verification=True, original_image_modified=False,
               host_only=True, boot_root_authenticated=False, qemu_tested=False, hardware_tested=False)
 (out / 'verification.json').write_text(json.dumps(report, indent=2) + '\n')
-print(f'PASS: SystemOS signature and every {view.block_count} block verified by real C/RSA')
+print(f'PASS: SystemOS signature and every {view.block_count} block verified by real C/RSA', flush=True)
 
 # --- Bundle: UniXNU's probe builder re-verifies and compiles both ------------
 # The probe builder replays the bsd_init compile record, whose -I list names the
@@ -258,9 +299,9 @@ for index, value in enumerate(arguments):
     if include and Path(include).is_absolute() and str(Path(include)).startswith(str(ROOT)) \
             and not Path(include).exists():
         Path(include).mkdir(parents=True, exist_ok=True)
-        print(f'created header-export staging directory the bootstrap did not reach: {include}')
+        print(f'created header-export staging directory the bootstrap did not reach: {include}', flush=True)
 run([sys.executable, ROOT / 'scripts/build-verified-root-probe.py',
      '--component', 'os', '--include-systemos'], cwd=ROOT)
 require(BUNDLE.is_file(), f'Probe bundle archive missing after its builder ran: {BUNDLE}')
 require((ROOT / 'build/verified-root-os/verification.json').is_file(), 'OS policy verification report missing')
-print(f'PASS: owner-root policies signed and bundle compiled: {BUNDLE.relative_to(ROOT)}')
+print(f'PASS: owner-root policies signed and bundle compiled: {BUNDLE.relative_to(ROOT)}', flush=True)
