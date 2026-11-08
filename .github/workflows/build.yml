@@ -70,6 +70,7 @@ jobs:
         run: |
           python3 -m py_compile scripts/*.py ci/*.py
           bash -n ci/decrypt-boot-image.sh
+          python3 ci/check-fuxi-boot-contract.py
 
   apple-clang:
     name: Kernel-target compile (Xcode clang)
