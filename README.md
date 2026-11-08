@@ -202,3 +202,80 @@ The project prioritises the next verifiable boot milestone over completing every
 - Verify actual artifacts/logs; never infer success from expected paths or workflow summaries.
 - Read the official UniXNU documentation for the current stage and label undocumented behavior as a hypothesis.
 - Never claim an edit, build or boot succeeded without GitHub/CI/device readback.
+
+
+---
+
+**语言 / Language：** [中文版](#中文版) | [English](#english)
+
+
+## 2026-11-08 快速 Bring-up：Userland → SpringBoard → Lock Screen
+
+**目标与里程碑。** 快速 bring-up 不是“所有驱动一次完成”，而是沿最短、可证明的路径到达下一个真实系统里程碑。按 M4/M5 口径：M4 = launchd 已实际运行（userland 硬里程碑）；M5 = 可见且稳定的图形登录/锁屏界面。中间必须分别验证 Data、关键系统服务与 SpringBoard，不能把“SpringBoard 进程被拉起”写成“锁屏已到达”。
+
+**冻结输入，不重造已通过的地基。**
+- 固定 iPadOS 17.7.11 / 21H461 与已证明的 arm64 用户态；每轮记录内核源码 revision、kernel.macho、固件、ADT、trust cache、Data seed、镜像和工具链身份/hash。
+- 复用已验证的 root / OS / SystemOS、信任链、持久化 Data 与启动打包输入。除非新的第一手证据指向它们，不重做 archive、ABI、trust、UFS/Data 或已通过的启动阶段。
+- 持久化窗口必须配对沿用 chain55 的原始种子字节（SHA-256 前缀 df83bf77；完整值见交接记录）。不得用每轮新生成的 CI 种子替代，不得重新格式化或改写种子来“试试看”。
+- 本线禁止 payload --skip-setup 和主机侧修改种子；当前 Skip Setup 功能目标采用持久化 Data 上的内核 writer 路线。其功能目标已在真机上达到（未进入 Setup 页面并到达 SpringBoard），但 SetupDone 的值尚未直接读取；不得把它表述成官方 Skip Setup 全部 Verify 项通过。
+
+**最短推进顺序。**
+1. DarwinBoot → XNU → root / OS / SystemOS：只核对启动链确实到达已知检查点；不重复修已关闭阶段。
+2. launchd（M4）：以实际运行证据为准，不以镜像生成、bootloader 接受或单一日志字符串代替。到达后把内核启动问题冻结，除非新证据明确回指内核。
+3. Data 与关键服务：确认持久化 Data 被识别并按预期续跑，核对挂载、UUID、读写状态和关键服务退出原因；种子身份与窗口几何必须保持一致。
+4. SpringBoard：区分“服务签名入口/启动尝试计数”“exec 成功”“进程稳定存活”。任何计数都要按其真实采样点命名，不能把入口计数写成成功计数。
+5. Lock Screen（M5）：只有真机上实际出现并保持可交互的锁屏界面，才算达标。SpringBoard 已启动、Setup 页面被跳过、或显示初始化日志出现，都不等于锁屏成功。
+
+**当前已知的 SpringBoard 阻塞点（不要误诊）。**
+- chain60/chain61 已将循环退出定位到 FrontBoardServices 的 -[FBSDisplaySource initWithCADisplay:]：主 CADisplay 查找失败，记录 failed to find the main CADisplay 后顺序执行 BRK #0，随后走 SIGTRAP 退出路径。
+- 因此当前直接阻塞点是显示提供者/显示初始化链，不是尚未解释的外部 kill，也不是需要继续追加退出原因 kcdata 探针。Phase 2 已 Deferred / Not Approved：不编码、不改 XNU、不加 exit-reason hook、不构建 chain62，除非未来出现能改变决策的新证据并重新评审。
+- 先完成主机侧只读核验与单变量设计评审。现有审计指向 L2 provider 缺口：GopFramebuffer 尚未接入本设备的 board/defconfig/builder/启动参数。以同 SoC 的 sheng 线作为集成形态参考；不得照搬其面板细节。fuxi 面板事实仍以本机硬件资料为准。
+- 不要通过屏蔽 SpringBoard 的 BRK、伪造 CADisplay、放宽签名或堆叠 workaround 来制造“启动成功”。先让真实显示服务提供者正确发布，再验证 FrontBoardServices 能找到 main CADisplay。
+
+**一加 13T 快速迭代节奏（强制）。**
+1. 先读当前阶段的 UniXNU 官方指南；把文档明确规定、源码证据、主机验证、真机观察和假设分开写。
+2. 先定位最早失败转换点，优先用已有 USB CDC 日志、持久化计数或屏幕可见 checkpoint；不要先加新钩子。USB 调试的日志通道可用，但远程 reset 必须保持关闭，不启用 REBOOT 动词。
+3. 每轮只修一个根因、改变一个变量。先做聚焦 host regression，再做真实 ARM64 编译/链接，检查 relocation/binding 与最终构件；源码空指针检查不能替代链接产物审计。
+4. 固定已验证输入，产出唯一标识候选镜像；逐项核对镜像、kernel、ADT、trust、Data seed 配对及 hash。构建失败也要收集完整原始日志和 build report。
+5. 只有机主明确要求时才上机；只用 fastboot boot，不刷写、不写分区。每次只验证一个假设，记录屏幕/USB 日志、最后确认里程碑和唯一下一阻塞点。
+6. 若回退到已知良好里程碑，撤销本轮变量，不叠加补丁。达到 M4 后停止无证据的内核重查；达到 SpringBoard 后把工作收敛到显示与 userland；达到 M5 后再规划 GPU、触控体验等非锁屏必需项。
+
+**每轮必须记录。** 改动变量及根因、基线与所有输入 hash、源码 revision、命令、host tests、ARM64 build/link 结果、镜像 readback、真机启动方式、实际可见界面、日志/计数语义、最后确认的 M 阶段、一个下一阻塞点。README、AGENTS.md 与 porting.toml 只记录已被证据支持的状态。
+
+
+---
+
+
+## 2026-11-08 Fast Bring-up: Userland → SpringBoard → Lock Screen
+
+**Goal and milestones.** Fast bring-up does not mean completing every driver at once. It means reaching the next real, evidence-backed system milestone through the shortest safe path. Use the M4/M5 convention: M4 = launchd is demonstrably running (the hard userland milestone); M5 = a visible, stable graphical login/lock-screen interface. Verify Data, critical services and SpringBoard separately. A SpringBoard launch attempt is not proof that the lock screen has been reached.
+
+**Freeze inputs; do not rebuild a proven foundation.**
+- Pin iPadOS 17.7.11 / 21H461 and the proven arm64 userspace. Record the kernel source revision and the identities/hashes of kernel.macho, firmware, ADT, trust cache, Data seed, image and toolchain on every iteration.
+- Reuse verified root / OS / SystemOS, trust-chain, persistent Data and boot-packaging inputs. Do not repeat archive, ABI, trust, UFS/Data or passed boot stages unless new first-hand evidence implicates them.
+- The persistent window must continue using the exact original chain55 seed bytes (SHA-256 prefix df83bf77; see the handoff for the full digest). Do not substitute a newly generated per-run CI seed, reformat the seed or mutate it experimentally.
+- This line prohibits payload --skip-setup and host-side seed modification. The current Skip Setup functional route is the kernel writer on persistent Data. The device-level functional goal was reached (no Setup page; SpringBoard reached), but the SetupDone value has not been read directly. Do not claim that every item in the official Skip Setup verification checklist passed.
+
+**Shortest progression.**
+1. DarwinBoot → XNU → root / OS / SystemOS: verify only that the boot chain reaches its known checkpoints; do not reopen closed stages.
+2. launchd (M4): require evidence that it actually runs. Image generation, bootloader acceptance or one log string is insufficient. Once reached, freeze kernel bring-up unless new evidence points back to the kernel.
+3. Data and critical services: confirm persistent Data is recognised and resumed as expected; check mounts, UUIDs, read/write state and critical-service exit reasons. Preserve seed identity and storage-window geometry.
+4. SpringBoard: distinguish signed-entry/launch-attempt counters from successful exec and stable process lifetime. Name every counter after its actual sampling point; never label an entry counter as a success counter.
+5. Lock Screen (M5): count it only when the device visibly displays a stable, interactive lock screen. SpringBoard launch, bypassing Setup, or a display-initialisation log is not lock-screen success.
+
+**Known SpringBoard blocker (avoid misdiagnosis).**
+- chain60/chain61 localised the restart loop to FrontBoardServices -[FBSDisplaySource initWithCADisplay:]: lookup of the main CADisplay fails, the code logs failed to find the main CADisplay, then falls through to BRK #0 and exits through SIGTRAP.
+- The immediate blocker is therefore the display-provider/initialisation path, not an unexplained external kill and not a reason to add another exit-reason kcdata probe. Phase 2 is Deferred / Not Approved: do not implement it, patch XNU, add an exit-reason hook or build chain62 unless new evidence changes the decision and the design is reviewed again.
+- Complete read-only host verification and single-variable design review first. The current audit points to a missing L2 provider integration: GopFramebuffer is not yet wired into this device's board/defconfig/builder/boot arguments. Use the same-SoC sheng line as an integration-shape reference only; do not copy its panel details. fuxi panel facts must come from this device's hardware evidence.
+- Do not manufacture apparent success by suppressing SpringBoard's BRK, faking CADisplay, weakening signing or stacking workarounds. Publish a real display provider first, then verify that FrontBoardServices can find the main CADisplay.
+
+**OnePlus 13T fast-iteration cadence (mandatory).**
+1. Read the official UniXNU guide for the current stage first. Separate documented requirements, source evidence, host verification, device observations and hypotheses.
+2. Find the earliest failing transition. Prefer existing USB CDC logs, persistent counters or visible checkpoints; do not add a new hook first. The USB diagnostic log channel is available, but remote reset must remain disabled and the REBOOT verb must not be enabled.
+3. Fix one root cause and change one variable per iteration. Run a focused host regression, then a real ARM64 compile/link; inspect relocations/bindings and the final artifact. A source null check is not a substitute for auditing the linked output.
+4. Freeze verified inputs and produce a uniquely identified candidate image. Verify image, kernel, ADT, trust, Data-seed pairing and hashes. Preserve complete raw logs and build reports even when a build fails.
+5. Boot the device only when the owner explicitly requests it; use fastboot boot only, with no flashing or partition writes. Test one hypothesis per boot and record screen/USB evidence, the last confirmed milestone and exactly one next blocker.
+6. If a change regresses a known-good milestone, revert that variable rather than stacking patches. After M4, stop unsupported kernel re-investigation; after SpringBoard, focus on display and userland; after M5, plan nonessential GPU and touch-experience work separately.
+
+**Required iteration record.** Record the changed variable and root cause, baseline and every input hash, source revision, commands, host tests, ARM64 build/link results, image readback, device boot method, actually visible UI, log/counter semantics, last confirmed M milestone and one next blocker. Update README, AGENTS.md and porting.toml only with evidence-backed status.
+
