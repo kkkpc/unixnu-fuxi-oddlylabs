@@ -461,9 +461,6 @@ extern "C" const char *fuxi_hid_row(char *out, size_t size);
 static bool gHidRequested;
 static char gHidText[160];
 static const char *hidText() {return gHidRequested ? fuxi_hid_row(gHidText, sizeof gHidText) : "";}
-// How far the system got (FuxiSysProbe.cpp): the root filesystem and the first processes; empty before the root is mounted.
-extern "C" const char *fuxi_sys_row(char *out, size_t size);
-static char gSysText[192];
 
 // Refreshes the diagnostic rows and prints them to the kernel log.
 static void report(const Session &s) {
@@ -585,9 +582,8 @@ static void touchThread(void *, wait_result_t) {
     } while (0);
     report(*s);
     if (panicReport) {
-        panic("fuxi-touch report (stage %u of %u)\n%s\n%s\n%s\n%s%s%s%s", native_touch_stage_done, native_touch_stage_req,
-              native_touch_rows[0], native_touch_rows[1], native_touch_rows[2], native_touch_rows[3], smpText(), hidText(),
-              fuxi_sys_row(gSysText, sizeof gSysText));
+        panic("fuxi-touch report (stage %u of %u)\n%s\n%s\n%s\n%s%s%s", native_touch_stage_done, native_touch_stage_req,
+              native_touch_rows[0], native_touch_rows[1], native_touch_rows[2], native_touch_rows[3], smpText(), hidText());
     }
 }
 

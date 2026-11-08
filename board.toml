@@ -36,7 +36,7 @@ lba_bytes = 4096
 # and the ShengUfs component declares it as a dependency; no virtio-mmio device exists
 # in this board's device tree, so the driver never matches hardware here. VerifiedRoot
 # is the kit that supplies the policy machinery (kits/VerifiedRoot).
-include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch", "VirtioMmioBlock", "VerifiedRoot"]
+include = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot", "QcomGeniSpi", "FuxiFtsTouch", "VirtioMmioBlock", "VerifiedRoot", "GopFramebuffer", "Adreno740", "AdrenoMetal"]
 
 [kernel]
 defconfig = "fuxi_defconfig"
@@ -53,6 +53,7 @@ patch_series = ["arch:patches/xnu/series", "soc:patches/xnu/series", "os:patches
 # with its bindings generator sits next to the RAM block it was audited against (Build #12).
 archives = [
   "build-fuxi-owner-root.py",
+  "build-fuxi-gpu-headers.py",
   "build-corecrypto-14.py",
   "build-corecrypto-14.py --namespace",
   "component:ArmDTPlatform",
@@ -69,6 +70,13 @@ archives = [
   "build-fuxi-ufs.py",
   "build-fuxi-touch.py",
   "build-fuxi-usb-debug.py",
+  "build-fuxi-display.py",
+  "prepare-fuxi-gmu.py --dtb ../../../../../../uefi-fuxi/Platforms/Xiaomi/fuxiPkg/FdtBlob/sm8550-xiaomi-fuxi.dtb",
+  "prepare-fuxi-gmu-votes.py --dtb ../../../../../../uefi-fuxi/Platforms/Xiaomi/fuxiPkg/FdtBlob/sm8550-xiaomi-fuxi.dtb",
+  "prepare-fuxi-command-db-oracle.py",
+  "component:Adreno740",
+  "build-adreno740-kits.py",
+  "build-adreno740-accelerator.py",
 ]
 
 [device_tree]
@@ -136,8 +144,8 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # UniXNU-sheng, and armcpu-self-ipi=1 lets each of them take IPIs: XNU signals a core only after it has handled one IPI
 # (evidence/2026-11-02-first-boot.md). fuxi-touch=4 runs the touch probe up to sensing with the interrupt, fuxi-touch-hid=1
 # starts the HID device that turns its contacts into reports (kits/fuxi/FuxiHidProbe.cpp; sheng-touch-hid=1 gives that device
-# its digitizer collection), and fuxi-touch-panic=2 panics with the probe's rows after the first lift, so the result can be
-# read from the panic screen. Without a touch the boot ends in the root device wait.
+# its digitizer collection). The diagnostic panic is disabled on the lockscreen path; reports remain in the serial/USB log.
+# Without a touch the boot ends in the root device wait.
 # native-ufs-root=1 selects the ShengUfs root in the userdata reserve (the full OS, flashed
 # once) over the RAM-disk root; the touch probe's SYS row then reports the UFS root.
 # sheng-data-persist=2 (persistent Data phase C resume boot, 2026-11-06; the install
@@ -152,8 +160,17 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # assumes (the driver's default is the same 1024 MiB; it is written out so the
 # window sizing has one visible source).
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1",
-               "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "fuxi-touch-panic=2", "native-ufs-root=1",
+               "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "native-ufs-root=1",
                "sheng-data-persist=2", "sheng-log-reserve=1024", "sheng-skip-setup=1", "sheng-lite=1",
+               "sheng-disable-watchdogd=1", "sheng-vsync=120",
+               "offline-legacy-phase=4", "offline-legacy-register=1", "offline-legacy-gop=1",
+               "offline-legacy-pm=1", "offline-legacy-validate=1", "offline-legacy-transfer=1",
+               "offline-legacy-cpu-present=1", "offline-legacy-unit-scale=2",
+               "offline-mobile-graphics-load=1", "offline-mobile-graphics-client=1", "offline-apfs-load=1",
+               "sheng-gpu-power=9", "sheng-gpu-zap=4", "fuxi-probe-prologue=1", "fuxi-probe-tctrl=0x08000001",
+               "fuxi-cp-protect=0", "sheng-gpu-metal=1", "sheng-gpu-wc=0", "sheng-tu-debug=sysmem",
+               "sheng-gpu-dcvs=1", "sheng-fb-gpu=1", "sheng-gpu-addon=1",
+               "sheng-disable-jobs=com.apple.identityservicesd,com.apple.locationd,com.apple.CommCenter,com.apple.bluetoothd,com.apple.liveactivitiesd",
                "qcom-usb-debug=1", "qcom-usb-ctl=1"]
 
 [payload.adt]
