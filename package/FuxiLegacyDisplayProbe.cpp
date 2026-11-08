@@ -85,6 +85,38 @@ char fuxi_legacy_properties[4096];
 }
 
 // ---------------------------------------------------------------------------
+// Board-provided provider symbol: the Adreno fence query.
+//
+// The pinned component declares native_adreno_fences weak_import
+// (NativeLegacyDisplay.cpp:54) and calls it only behind address
+// checks (note() :175, gpuWrote() :319): with no GPU fence provider
+// selected, submitted/retired keep their initial zero values and
+// gpuWrote() takes its no-fence path. Round 1 selects no GPU
+// provider, so this board provides the query itself, with exactly
+// the component's C ABI, returning false — the no-provider answer.
+// No fence state is fabricated: note() computes zero outstanding
+// fences and gpuWrote() returns true via its no-fence branch,
+// exactly the designed no-provider behaviour.
+//
+// It must be a real function in the kernel image, not an absent
+// binding: both call sites are direct calls, so the linker must
+// resolve the branch target before any address check can run.
+// Build #99's formal link failed with an arm64_b26 fixup error
+// (NativeLegacyDisplay::note()+0x44, from 0xFFFFFFF00BF7B2E8 to
+// 0x00000000) when the builder bound this symbol to absolute 0;
+// a direct branch cannot reach 0 from the kernel text.
+
+extern "C" {
+
+bool native_adreno_fences(uint32_t *submitted, uint32_t *retired) {
+    (void)submitted;
+    (void)retired;
+    return false;
+}
+
+}  // extern "C" (the board-provided fence query above)
+
+// ---------------------------------------------------------------------------
 // The 18 component callbacks (observation-only; see the file header).
 // The component declares every one of them extern "C"
 // (NativeLegacyDisplay.cpp), so the definitions must carry C linkage:

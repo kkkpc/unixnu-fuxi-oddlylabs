@@ -251,63 +251,143 @@ def derive_missing_bindings(bindings, audit, compiled, undefined):
     return derived, violations
 
 
-# Optional provider imports ---------------------------------------------------
+# Board-provided provider imports ----------------------------------------------
 # The pinned component declares the Adreno fence query weak_import
 # (NativeLegacyDisplay.cpp:54): its provider is the GPU driver, and
 # both call sites test the symbol's address before calling (:175,
 # :319), so "no provider selected" is a designed state. This board's
-# first round selects no GPU provider. A dynamic link would leave the
-# weak reference unresolved and bind it to 0 at load; the kernel link
-# is static and cannot — Build #96's final link reported the weak
-# import as a hard undefined symbol. The link-level equivalent of the
-# absent-weak binding is an absolute binding to 0 in the bindings
-# object: no code is provided, the address checks take the
-# no-provider path, and the symbol stays out of the record bindings
-# (it is not an original-class address). The allowlist is fixed at
-# one symbol and gated on the evidence that makes the binding honest:
-# the compiled object must import the symbol as a weak reference
-# (n_desc N_WEAK_REF) and the pinned component source must still
+# first round selects no GPU provider.
+#
+# Build #96 bound the import to absolute 0 in the bindings object,
+# reasoning that the address checks would take the no-provider path.
+# Build #99's formal link disproved that: both call sites are direct
+# calls, so the linker must resolve the branch target before any
+# address check can run, and it failed with an arm64_b26 fixup error
+# (NativeLegacyDisplay::note()+0x44, from 0xFFFFFFF00BF7B2E8 to
+# 0x00000000 — a displacement far beyond the +/-128 MiB B/BL range).
+# Binding a function to 0 is only ever valid for indirect or data
+# references, never for a direct branch target.
+#
+# The board therefore provides the query itself: the board glue
+# (package/FuxiLegacyDisplayProbe.cpp) defines native_adreno_fences
+# with the component's exact C ABI, returning false — the
+# no-provider answer (note() keeps its zero submitted/retired
+# counts, gpuWrote() takes its no-fence path; no fence state is
+# fabricated). The builder emits NO binding for the symbol, and
+# gates the arrangement on the evidence that makes it honest: the
+# compiled object must import the symbol as a weak reference
+# (n_desc N_WEAK_REF), the pinned component source must still
 # declare it weak_import with at least two address-availability
-# guards. Any other shape is refused, never silently bound.
+# guards, and the glue source must define it — inside an extern "C"
+# region, with the exact signature, returning false. After the glue
+# is compiled, the builder additionally verifies that the glue
+# object exports the symbol as a defined section symbol and that
+# the bindings object does not mention it at all. Any other shape
+# is refused, never silently accommodated.
 N_WEAK_REF = 0x0040
-OPTIONAL_ABSENT_SYMBOLS = ('_native_adreno_fences',)
+BOARD_PROVIDED_SYMBOLS = ('_native_adreno_fences',)
 
 
-def optional_absent_bindings(undefined_desc, component_source):
-    """Bind allowlisted optional provider imports to absent (0).
+def extern_c_regions(text):
+    """(start, end) character spans of each extern "C" { ... } block
+    in `text`, brace-matched from the opening brace."""
+    regions = []
+    for match in re.finditer(r'extern "C" \{', text):
+        depth = 0
+        i = match.end() - 1
+        while i < len(text):
+            if text[i] == '{':
+                depth += 1
+            elif text[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        regions.append((match.start(), i + 1))
+    return regions
+
+
+def board_provided_imports(undefined_desc, component_source, glue_source):
+    """Verify the board glue provides the allowlisted provider imports.
 
     `undefined_desc` maps each undefined import of the compiled
-    component object to its Mach-O n_desc. Returns (absent,
-    violations): absent maps each bound symbol to 0. A symbol the
-    object does not import at all is not bound (nothing references
-    it); an imported symbol is bound only under the gates documented
-    above, and every gate failure is a violation."""
-    absent = {}
+    component object to its Mach-O n_desc. Returns (provided,
+    violations): provided lists each symbol the glue verifiably
+    defines under the gates documented above. A symbol the object
+    does not import at all needs no provider (nothing references
+    it); an imported symbol is provided only under every gate, and
+    every gate failure is a violation."""
+    provided = []
     violations = []
-    for name in OPTIONAL_ABSENT_SYMBOLS:
+    regions = extern_c_regions(glue_source)
+    for name in BOARD_PROVIDED_SYMBOLS:
         if name not in undefined_desc:
             continue
         if not undefined_desc[name] & N_WEAK_REF:
             violations.append(
-                f'Optional provider import {name} is not a weak reference '
-                'in the compiled object; refusing to bind it absent')
+                f'Board-provided import {name} is not a weak reference '
+                'in the compiled object; refusing the board definition')
             continue
         plain = name[1:] if name.startswith('_') else name
         declaration = component_source.split(plain, 1)[-1].split(';', 1)[0] \
             if plain in component_source else ''
         if 'weak_import' not in declaration:
             violations.append(
-                f'Optional provider import {name} is not declared weak_import '
-                'in the pinned component source; refusing to bind it absent')
+                f'Board-provided import {name} is not declared weak_import '
+                'in the pinned component source; refusing the board definition')
             continue
         if component_source.count('&' + plain) < 2:
             violations.append(
-                f'Optional provider import {name} has fewer than two '
+                f'Board-provided import {name} has fewer than two '
                 'address-availability guards in the component source; '
-                'refusing to bind it absent')
+                'refusing the board definition')
             continue
-        absent[name] = 0
-    return absent, violations
+        definition = re.search(
+            rf'bool\s+{plain}\s*\(\s*uint32_t\s*\*\s*submitted\s*,'
+            rf'\s*uint32_t\s*\*\s*retired\s*\)\s*\{{', glue_source)
+        if definition is None:
+            violations.append(
+                f'Board glue does not define {name} with the component ABI '
+                '(bool (uint32_t *, uint32_t *)); refusing to build')
+            continue
+        if not any(start <= definition.start() < end for start, end in regions):
+            violations.append(
+                f'Board glue defines {name} outside an extern "C" region; '
+                'it would export a mangled name; refusing to build')
+            continue
+        depth = 0
+        i = definition.end() - 1
+        body_start = i + 1
+        while i < len(glue_source):
+            if glue_source[i] == '{':
+                depth += 1
+            elif glue_source[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        body = glue_source[body_start:i]
+        if 'return false;' not in body or 'return true' in body:
+            violations.append(
+                f'Board glue definition of {name} does not return false '
+                'unconditionally; it must state the no-provider answer and '
+                'never fabricate fence state; refusing to build')
+            continue
+        provided.append(name)
+    return provided, violations
+
+
+def object_symbols(path):
+    """Map each symbol name in a Mach-O object to its n_type byte."""
+    blob = Path(path).read_bytes()
+    img = macho(blob)
+    st_cmd = next(p for c, p, _ in img['commands'] if c == 2)
+    sy_off, n_syms, strs_off, _ = struct.unpack_from('<4I', blob, st_cmd + 8)
+    result = {}
+    for i in range(n_syms):
+        ix, n_type, _sect, _desc, _va = struct.unpack_from('<IBBHQ', blob, sy_off + i * 16)
+        result[blob[strs_off + ix:blob.index(b'\0', strs_off + ix)].decode()] = n_type
+    return result
 
 
 # --- Gate 2: locate the verification original in the actual tree ------------
@@ -552,21 +632,26 @@ require(set(bindings) <= undefined,
 stray = {n for n in undefined if 'IOMobileFramebufferLegacy' in n and n not in bindings}
 require(not stray, 'Component object imports unqualified original-class symbols: ' + ', '.join(sorted(stray)))
 
-# --- Optional provider imports: bind the unselected ones absent --------------
+# --- Board-provided provider imports ------------------------------------------
 component_source = (ROOT / 'drivers/GopFramebuffer/NativeLegacyDisplay.cpp').read_text()
-absent_bindings, absent_violations = optional_absent_bindings(undefined_desc, component_source)
-if absent_violations:
-    for violation in absent_violations:
+glue_source_path = ROOT / 'kits/fuxi/FuxiLegacyDisplayProbe.cpp'
+glue_source = glue_source_path.read_text()
+provided_imports, provided_violations = board_provided_imports(
+    undefined_desc, component_source, glue_source)
+if provided_violations:
+    for violation in provided_violations:
         print(f'fuxi-legacy: GATE 3 VIOLATION: {violation}')
-    raise SystemExit(f'Gate 3 failed: {len(absent_violations)} optional-import violation(s), listed above in full')
-for name in sorted(absent_bindings):
-    print(f'fuxi-legacy: optional provider import {name}: no provider selected on this board; '
-          'binding it absent (0) under the weak-import gates')
+    raise SystemExit(f'Gate 3 failed: {len(provided_violations)} board-provider violation(s), listed above in full')
+for name in sorted(provided_imports):
+    print(f'fuxi-legacy: board-provided provider import {name}: no GPU provider selected on this board; '
+          'the board glue defines it returning false (the no-provider answer)')
+require(not (set(provided_imports) & set(bindings)),
+        'A board-provided import also carries a record binding; refusing the overlap')
 
 # --- Bindings object ----------------------------------------------------------
 asm = OUT / 'original-bindings.S'
 asm.write_text(''.join(f'.globl {name}\n.set {name}, {va:#x}\n'
-                       for name, va in sorted({**bindings, **absent_bindings}.items())))
+                       for name, va in sorted(bindings.items())))
 sdk = run(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], text=True).strip()
 run(['xcrun', 'clang', '-target', TRIPLE, '-isysroot', sdk, '-c', asm, '-o', OUT / 'original-bindings.o'])
 
@@ -610,6 +695,25 @@ cmd += ['-Wall', '-Wextra', '-Werror', '-Wno-unused-parameter', '-Wno-unnecessar
         '-I', str(ROOT / '.cache/xnu-work/osfmk')]
 run(cmd, cwd=r['directory'])
 
+# --- Verify the board-provided symbols in the compiled objects ------------------
+# The Build #99 acceptance checks, enforced here at build time: the
+# bindings object must not mention a board-provided symbol in any form
+# (its absolute-0 binding was the #99 fixup error), and the glue object
+# must export each provided symbol as a defined section symbol, so the
+# component's direct calls resolve to a real in-kernel target.
+N_SECT_EXT = 0x0f  # N_SECT | N_EXT
+bindings_symbols = object_symbols(OUT / 'original-bindings.o')
+glue_symbols = object_symbols(glue_obj)
+for name in BOARD_PROVIDED_SYMBOLS:
+    require(name not in bindings_symbols,
+            f'Bindings object defines board-provided symbol {name}; '
+            'a generated binding for it was the Build #99 link failure')
+    if name in provided_imports:
+        require(glue_symbols.get(name) == N_SECT_EXT,
+                f'Glue object does not export {name} as a defined section symbol '
+                f'(n_type found: {glue_symbols.get(name)!r}); the board definition '
+                'did not compile in with C linkage')
+
 # --- Archive exactly the three display members ---------------------------------
 archive = OUT / 'libNativeLegacyDisplay.late.a'
 archive.unlink(missing_ok=True)
@@ -633,16 +737,24 @@ sources = [ROOT / 'drivers/GopFramebuffer/NativeLegacyDisplay.cpp',
     compiled_object_sha256=sha(obj), late_object_sha256=sha(late),
     glue_object_sha256=sha(glue_obj), archive_sha256=sha(archive),
     bindings={n: hex(v) for n, v in bindings.items()}, virtual_entries=358,
-    optional_absent_bindings={n: hex(v) for n, v in absent_bindings.items()},
-    optional_absent_provenance='Provider hooks the pinned component declares weak_import and calls '
-                               'only behind address-availability checks, bound to 0 (absent) because '
-                               'this board selects no provider for them in round 1 and the static '
-                               'kernel link cannot leave a weak reference unresolved (Build #96). No '
-                               'implementation is provided; the component takes its designed '
-                               'no-provider path. The set is the fixed allowlist '
-                               'OPTIONAL_ABSENT_SYMBOLS, each entry gated on the compiled object '
-                               'importing the symbol as a weak reference (n_desc N_WEAK_REF), on the '
-                               'weak_import declaration, and on the guarded call sites.',
+    board_provided_imports=provided_imports,
+    board_provided_provenance='Provider hooks the pinned component declares weak_import and calls '
+                              'only behind address-availability checks. Round 1 selects no GPU '
+                              'provider for them, so the board glue defines each with the '
+                              'component ABI returning false — the no-provider answer; no fence '
+                              'state is fabricated. Build #96 bound _native_adreno_fences to '
+                              'absolute 0 instead; Build #99\'s formal link failed with an '
+                              'arm64_b26 fixup error because both call sites are direct calls '
+                              'whose target the linker must resolve before any address check '
+                              'can run. The builder now emits no binding for a board-provided '
+                              'symbol and verifies the glue object exports it as a defined '
+                              'section symbol while the bindings object does not mention it. '
+                              'The set is the fixed allowlist BOARD_PROVIDED_SYMBOLS, each '
+                              'entry gated on the compiled object importing the symbol as a '
+                              'weak reference (n_desc N_WEAK_REF), on the weak_import '
+                              'declaration, on the guarded call sites, and on the glue '
+                              'definition (exact signature, inside an extern "C" region, '
+                              'returning false).',
     derived_bindings=derived_bindings,
     derived_bindings_provenance='Bindings absent from the E2 record bindings map were derived '
                                 'from the record method table only, in the accounted forms '
