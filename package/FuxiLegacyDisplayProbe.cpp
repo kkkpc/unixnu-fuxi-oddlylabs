@@ -20,6 +20,19 @@
 // DT-plane display-subsystem attach) is implemented; any other phase
 // value fails closed. The late probe starts the display and nothing
 // else: no other subsystem probes are aggregated here.
+//
+// Round 3 (2026-11-08): the GOP-mapping callback also runs the
+// unit-scale policy adapted from UniXNU-sheng's LegacyDisplayProbe
+// (its GOP-mapping path, same anchor): when offline-legacy-unit-scale
+// asks for it, publish the display-scale and display-rotation words
+// on /chosen before the display registers. Round 2's device evidence
+// (Build #111: sheng-vsync=120 in the boot arguments, refresh
+// properties published through the component's registerService, and
+// SpringBoard still died at the same FBSDisplayMode validation)
+// left the mode's preferredScale without any source on this board:
+// no argument, no glue policy and no device-tree node published a
+// display scale. The policy prints the values it read back, so the
+// boot log itself proves what was published.
 #include <IOKit/IOPlatformExpert.h>
 #include <IOKit/IODeviceMemory.h>
 #include <IOKit/IODeviceTreeSupport.h>
@@ -41,6 +54,37 @@ static IOService *pendingLegacyDisplay;
 static IOService *activeLegacyDisplay;
 static IOService *activeGOPNub;
 
+// The unit-scale policy's /chosen handle and which of the two words
+// it added itself (a pre-existing word is matched, never replaced,
+// and only a word the policy added is removed again on rollback).
+// Same mechanism as UniXNU-sheng's LegacyDisplayProbe.
+static IORegistryEntry *unitScaleChosen;
+static bool unitScaleAdded, unitRotationAdded;
+static void finishUnitScalePolicy(bool keep) {
+    if (unitScaleChosen && !keep) {
+        if (unitScaleAdded) unitScaleChosen->removeProperty("display-scale");
+        if (unitRotationAdded) unitScaleChosen->removeProperty("display-rotation");
+    }
+    OSSafeReleaseNULL(unitScaleChosen);
+    unitScaleAdded = false;
+    unitRotationAdded = false;
+}
+static bool publishOrMatchWord(IORegistryEntry *entry, const char *key, uint32_t value, bool &added) {
+    OSObject *previous = entry->getProperty(key);
+    if (previous) {
+        OSData *data = OSDynamicCast(OSData, previous);
+        uint32_t word = 0;
+        if (!data || data->getLength() != sizeof(word)) return false;
+        memcpy(&word, data->getBytesNoCopy(), sizeof(word));
+        return word == value;
+    }
+    OSData *data = OSData::withBytes(&value, sizeof(value));
+    bool result = data && entry->setProperty(key, data);
+    OSSafeReleaseNULL(data);
+    added = result;
+    return result;
+}
+
 extern "C" {
 // Stage of the two-probe lifecycle: 0 idle, 1 early probe entered,
 // 2 PE console validated, 3 object allocated, 4 late probe building
@@ -60,6 +104,8 @@ volatile uint64_t fuxi_legacy_gop_map, fuxi_legacy_gop_virtual, fuxi_legacy_gop_
 volatile uint32_t fuxi_legacy_gop_width, fuxi_legacy_gop_height;
 volatile uint32_t fuxi_legacy_registration_calls, fuxi_legacy_properties_length;
 volatile uint32_t fuxi_legacy_dt_attached;
+volatile int fuxi_legacy_unit_scale_status = -1;
+volatile uint32_t fuxi_legacy_unit_scale_calls, fuxi_legacy_chosen_scale, fuxi_legacy_chosen_rotation;
 volatile uint32_t fuxi_legacy_pm_stage, fuxi_legacy_pm_calls;
 volatile int fuxi_legacy_pm_status = -1;
 volatile uint32_t fuxi_legacy_pm_ordinal;
@@ -145,6 +191,70 @@ bool native_legacy_gop_mapping_observed(IOService *object, IOMemoryMap *mapping,
     fuxi_legacy_gop_width = width;
     fuxi_legacy_gop_height = height;
     (void)object;
+
+    // Unit-scale policy (round 3; adapted from UniXNU-sheng's
+    // LegacyDisplayProbe GOP-mapping path, which anchors at the same
+    // point of the same component flow). This callback runs inside
+    // the component's startHardware(), before its registerService(),
+    // so words published here are in /chosen before the display is
+    // registered and before any client can read a display mode.
+    //
+    // The value is the UI scale: logical points = actual scanout
+    // pixels / scale (1..3). It changes only the published
+    // display-scale; the scanout copy still moves one actual pixel
+    // per pixel. This is an explicit offline UI policy, not physical
+    // pixel density, panel timing, an Apple device identity or a
+    // synthesized mode list.
+    //
+    // One deliberate difference from sheng's control flow: sheng's
+    // prepare path fails the whole start when the policy cannot
+    // publish. This callback's contract is observation, so a policy
+    // failure here only records and prints its status (the round is
+    // then judged void from the printed values) and never takes the
+    // display start down with it.
+    unsigned unitScale = 0;
+    PE_parse_boot_argn("offline-legacy-unit-scale", &unitScale, sizeof(unitScale));
+    if (!unitScale) return true;
+    fuxi_legacy_unit_scale_calls = fuxi_legacy_unit_scale_calls + 1;
+    fuxi_legacy_unit_scale_status = 1;
+    unsigned phase = 0;
+    PE_parse_boot_argn("offline-legacy-phase", &phase, sizeof(phase));
+    PE_Video video = {};
+    if (unitScale < 1 || unitScale > 3 || phase != 4 || unitScaleChosen || PE_current_console(&video) ||
+        video.v_width != width || video.v_height != height || video.v_rotate ||
+        !mapping || mapping->getPhysicalAddress() != video.v_baseAddr) {
+        printf("fuxi-legacy: unit-scale checks failed scale=%u phase=%u console=%ux%u hook=%ux%u rotate=%d status=%d\n",
+               unitScale, phase, (unsigned)video.v_width, (unsigned)video.v_height, width, height,
+               (int)video.v_rotate, fuxi_legacy_unit_scale_status);
+        return true;
+    }
+    unitScaleChosen = IORegistryEntry::fromPath("/chosen", gIODTPlane);
+    if (!unitScaleChosen ||
+        !publishOrMatchWord(unitScaleChosen, "display-scale", unitScale, unitScaleAdded) ||
+        !publishOrMatchWord(unitScaleChosen, "display-rotation", (uint32_t)video.v_rotate, unitRotationAdded)) {
+        finishUnitScalePolicy(false);
+        printf("fuxi-legacy: unit-scale publish failed scale=%u rotation=%d status=%d\n",
+               unitScale, (int)video.v_rotate, fuxi_legacy_unit_scale_status);
+        return true;
+    }
+    OSData *scale = OSDynamicCast(OSData, unitScaleChosen->getProperty("display-scale"));
+    OSData *rotation = OSDynamicCast(OSData, unitScaleChosen->getProperty("display-rotation"));
+    uint32_t actualScale = 0, actualRotation = 0;
+    if (!scale || !rotation || scale->getLength() != 4 || rotation->getLength() != 4) {
+        finishUnitScalePolicy(false);
+        printf("fuxi-legacy: unit-scale readback missing scale=%u status=%d\n",
+               unitScale, fuxi_legacy_unit_scale_status);
+        return true;
+    }
+    memcpy(&actualScale, scale->getBytesNoCopy(), 4);
+    memcpy(&actualRotation, rotation->getBytesNoCopy(), 4);
+    fuxi_legacy_chosen_scale = actualScale;
+    fuxi_legacy_chosen_rotation = actualRotation;
+    fuxi_legacy_unit_scale_status =
+        actualScale == unitScale && actualRotation == (uint32_t)video.v_rotate ? 0 : 2;
+    printf("fuxi-legacy: unit-scale scale=%u rotation=%u status=%d\n",
+           actualScale, actualRotation, fuxi_legacy_unit_scale_status);
+    if (fuxi_legacy_unit_scale_status) finishUnitScalePolicy(false);
     return true;
 }
 

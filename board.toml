@@ -164,6 +164,16 @@ kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmg
                # and run the phase-4 park-then-start flow. Presentation arguments (pm/validate/transfer/
                # cpu-present) stay out.
                "offline-mobile-graphics-load=1", "offline-legacy-register=1", "offline-legacy-gop=1", "offline-legacy-phase=4",
+               # Round 3 (owner-approved 2026-11-08): offline-legacy-unit-scale=2 asks the board glue's
+               # unit-scale policy to publish display-scale=2 and display-rotation=0 on /chosen from the
+               # GOP-mapping callback, before the display registers - the same policy and value as
+               # UniXNU-sheng's verified recipe. 2 is sheng's value and the iPad7,1 native scale, an
+               # experimental value, not a fuxi measurement. Round 2's boot (Build #111) carried
+               # sheng-vsync=120 and still died at the same FBSDisplayMode validation; the mode's
+               # preferredScale had no source anywhere on this board (no argument, no glue policy, no
+               # device-tree node). This argument is inert without the glue policy in
+               # package/FuxiLegacyDisplayProbe.cpp; the two land together.
+               "offline-legacy-unit-scale=2",
                # Round 2 (single-variable experiment, owner-approved 2026-11-08): sheng-vsync=120 is the
                # refresh rate REQUESTED of the component's timer-faked vsync, taken from sheng's verified
                # recipe - a requested rate, not a fuxi panel measurement. Build #100 (no vsync argument)
