@@ -1,35 +1,26 @@
-# Device agent guide
+**语言 / Language：** [中文版](#中文版) | [English](#english)
 
-This repository owns the Xiaomi 13 (fuxi, SM8550) board: DTS, peripheral wiring, component selection, firmware inputs,
-the board probe and packaging. Shared SM8550 resources belong to `UniXNU-sm8550-common`; the build driver, the component
-catalog and the documentation belong to UniXNU. This board builds with the fork
-[OddlyLabs/UniXNU](https://github.com/OddlyLabs/UniXNU) (branch `fuxi`), whose catalog has the `FuxiFtsTouch`
-component and whose `bootimg` takes the fuxi boot image options; upstream UniXNU has neither yet. The firmware is
-[OddlyLabs/uefi-fuxi](https://github.com/OddlyLabs/uefi-fuxi) (branch `fuxi`): UniXNU/uefi-sheng with the fuxi commits of
-matejkoo217/uefi-fuxi. Keep both forks as their upstream plus a small set of fuxi commits, merge upstream into them, and
-update the pinned revisions in `.github/workflows/build.yml` after each merge.
+## 中文版
 
-## Read first
+# 设备 Agent 指南
 
-| Task | Required reading |
+本仓库维护小米 13（fuxi，SM8550）板级内容：DTS、外设连接、组件选择、固件输入、板级探针与打包。共享 SM8550 资源归 `UniXNU-sm8550-common`；构建驱动、组件目录和文档归 UniXNU。本板使用 [OddlyLabs/UniXNU](https://github.com/OddlyLabs/UniXNU) 的 `fuxi` 分支构建，该分支包含 `FuxiFtsTouch` 组件及 fuxi 所需的 bootimg 参数，上游 UniXNU 目前尚不包含这些内容。固件使用 [OddlyLabs/uefi-fuxi](https://github.com/OddlyLabs/uefi-fuxi) 的 `fuxi` 分支，基于 UniXNU/uefi-sheng 并包含 matejkoo217/uefi-fuxi 的 fuxi 提交。两个 fork 应保持为上游加少量 fuxi 专属提交；合并上游后，更新 `.github/workflows/build.yml` 中 pin 住的 revision。
+
+### 必读资料
+
+| 工作 | 必须阅读 |
 | --- | --- |
-| Every change | [Porting](https://unixnu.com/porting/), [device repository](https://unixnu.com/porting/device-repository), the fork's `components.toml` |
-| Hardware facts | `fuxi_touch_panel_porting.md` and `facts/` (every value names its source), the selected SoC DTSI |
-| Touch | [FuxiFtsTouch](https://github.com/OddlyLabs/FuxiFtsTouch), `package/FuxiTouchProbe.cpp`, `package/FuxiTouchBoard.h` |
-| Kernel | [Source and patches](https://unixnu.com/xnu/source-and-patches), `patches/xnu/series` |
-| Images | [Prelink](https://unixnu.com/concepts/prelink), [payload](https://unixnu.com/concepts/payload), [UEFI](https://unixnu.com/porting/uefi-firmware) |
+| 每次改动 | [Porting](https://unixnu.com/porting/)、[device repository](https://unixnu.com/porting/device-repository)、fork 的 `components.toml` |
+| 硬件事实 | `fuxi_touch_panel_porting.md`、`facts/`（每个数值注明来源）、所选 SoC DTSI |
+| 触控 | [FuxiFtsTouch](https://github.com/OddlyLabs/FuxiFtsTouch)、`package/FuxiTouchProbe.cpp`、`package/FuxiTouchBoard.h` |
+| 内核 | [Source and patches](https://unixnu.com/xnu/source-and-patches)、`patches/xnu/series` |
+| 镜像 | [Prelink](https://unixnu.com/concepts/prelink)、[payload](https://unixnu.com/concepts/payload)、[UEFI](https://unixnu.com/porting/uefi-firmware) |
 
-## Work
+### 工作约定
 
-Take hardware values from the stock device tree or a measurement on the device, and record the source next to the value.
-Other fuxi ports are references, not sources of truth. Do not copy GPL code (the Android `fts_spi` driver) into this
-repository. `package/TouchBoard.h`, `package/QcomRpmh.*`, `package/SmmuBypass.h` and `package/ShengPlatformPower.cpp`
-are unchanged copies from UniXNU-sheng `package/`, `package/NativeHidInput.cpp` is an unchanged copy of UniXNU
-ShengHidInput (71a40e7), and `package/NativeRamBlock.cpp`, `package/SparseDisk.h`, `package/SeedDisk.h`,
-`package/DirectDisk.h` and `package/PersistOverlay.h` are unchanged copies of UniXNU RamBlock (4be2d7e); keep them
-unchanged so they can be compared with their origin.
+硬件数值必须来自原厂设备树或真机测量，并在数值旁记录来源。其他 fuxi 移植只能作为参考，不能作为事实来源。不得把 GPL 的 Android `fts_spi` 驱动复制进本仓库。`package/TouchBoard.h`、`package/QcomRpmh.*`、`package/SmmuBypass.h`、`package/ShengPlatformPower.cpp` 是 UniXNU-sheng `package/` 的原样副本；`package/NativeHidInput.cpp` 是 UniXNU ShengHidInput（`71a40e7`）的原样副本；`package/NativeRamBlock.cpp`、`package/SparseDisk.h`、`package/SeedDisk.h`、`package/DirectDisk.h` 和 `package/PersistOverlay.h` 是 UniXNU RamBlock（`4be2d7e`）的原样副本。保持这些文件不变，以便与来源逐项比较。
 
-Run from the UniXNU fork checkout:
+从 UniXNU fork checkout 执行：
 
 ```sh
 ./unixnu defconfig fuxi_defconfig -D ../unixnu-fuxi
@@ -38,16 +29,11 @@ Run from the UniXNU fork checkout:
 python3 scripts/porting-record.py check --device ../unixnu-fuxi
 ```
 
-Never flash the device. A test image is started with `fastboot boot` only, and only when the owner asks for it.
+绝不刷写设备。测试镜像只允许使用 `fastboot boot` 临时启动，并且只有机主明确要求时才执行。
 
-## Porting record
+### 移植记录
 
-`porting.toml` is the shared record. Update the findings or evidence of each area whose files a change touches, and run
-the record checker. Report host results and device observations separately, with the commit they were made at.
-
-**语言 / Language：** [中文版](#中文版) | [English](#english)
-
-## 中文版
+`porting.toml` 是共享移植记录。改动触及哪个区域，就更新该区域的发现或证据并运行记录检查器。主机测试结果与真机观察必须分开报告，并注明对应提交。
 
 # 设备 Agent 指南
 
@@ -101,6 +87,53 @@ porting.toml 是共享移植记录。改动触及哪个区域，就更新该区�
 - 未经 GitHub/CI/设备证据 readback，不得宣称编辑、构建或启动已完成。
 
 ## English
+
+# Device agent guide
+
+This repository owns the Xiaomi 13 (fuxi, SM8550) board: DTS, peripheral wiring, component selection, firmware inputs,
+the board probe and packaging. Shared SM8550 resources belong to `UniXNU-sm8550-common`; the build driver, the component
+catalog and the documentation belong to UniXNU. This board builds with the fork
+[OddlyLabs/UniXNU](https://github.com/OddlyLabs/UniXNU) (branch `fuxi`), whose catalog has the `FuxiFtsTouch`
+component and whose `bootimg` takes the fuxi boot image options; upstream UniXNU has neither yet. The firmware is
+[OddlyLabs/uefi-fuxi](https://github.com/OddlyLabs/uefi-fuxi) (branch `fuxi`): UniXNU/uefi-sheng with the fuxi commits of
+matejkoo217/uefi-fuxi. Keep both forks as their upstream plus a small set of fuxi commits, merge upstream into them, and
+update the pinned revisions in `.github/workflows/build.yml` after each merge.
+
+## Read first
+
+| Task | Required reading |
+| --- | --- |
+| Every change | [Porting](https://unixnu.com/porting/), [device repository](https://unixnu.com/porting/device-repository), the fork's `components.toml` |
+| Hardware facts | `fuxi_touch_panel_porting.md` and `facts/` (every value names its source), the selected SoC DTSI |
+| Touch | [FuxiFtsTouch](https://github.com/OddlyLabs/FuxiFtsTouch), `package/FuxiTouchProbe.cpp`, `package/FuxiTouchBoard.h` |
+| Kernel | [Source and patches](https://unixnu.com/xnu/source-and-patches), `patches/xnu/series` |
+| Images | [Prelink](https://unixnu.com/concepts/prelink), [payload](https://unixnu.com/concepts/payload), [UEFI](https://unixnu.com/porting/uefi-firmware) |
+
+## Work
+
+Take hardware values from the stock device tree or a measurement on the device, and record the source next to the value.
+Other fuxi ports are references, not sources of truth. Do not copy GPL code (the Android `fts_spi` driver) into this
+repository. `package/TouchBoard.h`, `package/QcomRpmh.*`, `package/SmmuBypass.h` and `package/ShengPlatformPower.cpp`
+are unchanged copies from UniXNU-sheng `package/`, `package/NativeHidInput.cpp` is an unchanged copy of UniXNU
+ShengHidInput (71a40e7), and `package/NativeRamBlock.cpp`, `package/SparseDisk.h`, `package/SeedDisk.h`,
+`package/DirectDisk.h` and `package/PersistOverlay.h` are unchanged copies of UniXNU RamBlock (4be2d7e); keep them
+unchanged so they can be compared with their origin.
+
+Run from the UniXNU fork checkout:
+
+```sh
+./unixnu defconfig fuxi_defconfig -D ../unixnu-fuxi
+./unixnu status --json
+./unixnu build kernel
+python3 scripts/porting-record.py check --device ../unixnu-fuxi
+```
+
+Never flash the device. A test image is started with `fastboot boot` only, and only when the owner asks for it.
+
+## Porting record
+
+`porting.toml` is the shared record. Update the findings or evidence of each area whose files a change touches, and run
+the record checker. Report host results and device observations separately, with the commit they were made at.
 
 # Device Agent Guide
 
