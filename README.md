@@ -7,9 +7,7 @@
 [![Build](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml/badge.svg)](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml)
 [![Device documentation](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/porting-record.yml/badge.svg)](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/porting-record.yml)
 
-Device repository for the Xiaomi 13 (fuxi, SM8550), created from UniXNU's `examples/device` template. It builds with the
-fork [OddlyLabs/UniXNU](https://github.com/OddlyLabs/UniXNU) (branch `fuxi`), whose component catalog has
-`FuxiFtsTouch`.
+本仓库是小米 13（fuxi，SM8550）的 UniXNU 设备仓库，基于 UniXNU 的 `examples/device` 模板创建，使用 [OddlyLabs/UniXNU](https://github.com/OddlyLabs/UniXNU) 的 `fuxi` 分支构建；该分支的组件目录包含 `FuxiFtsTouch`。
 
 主文档：[fuxi_touch_panel_porting.md](fuxi_touch_panel_porting.md)。各子系统的状态以 [porting.toml](porting.toml) 为准。
 
