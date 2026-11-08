@@ -45,6 +45,8 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 import uuid
 import zipfile
@@ -87,12 +89,24 @@ class RangeFile(io.RawIOBase):
     """A seekable read-only view of a remote file over HTTP range requests."""
 
     BLOCK = 8 * 1024 * 1024
+    RETRIES = 5
 
     def __init__(self, url):
         self.url = url
         request = urllib.request.Request(url, method='HEAD')
-        with urllib.request.urlopen(request) as response:
-            self.size = int(response.headers['Content-Length'])
+        last = None
+        for attempt in range(self.RETRIES):
+            try:
+                with urllib.request.urlopen(request, timeout=60) as response:
+                    self.size = int(response.headers['Content-Length'])
+                break
+            except (OSError, urllib.error.URLError) as error:
+                last = error
+                if attempt + 1 == self.RETRIES:
+                    raise
+                time.sleep(2 ** attempt)
+        else:
+            raise last
         self.position = 0
         self.cache = {}
 
@@ -116,8 +130,26 @@ class RangeFile(io.RawIOBase):
                 self.cache.clear()
             start = block_index * self.BLOCK
             request = urllib.request.Request(self.url, headers={'Range': f'bytes={start}-{start + self.BLOCK - 1}'})
-            with urllib.request.urlopen(request) as response:
-                self.cache[block_index] = response.read()
+            expected = min(self.BLOCK, self.size - start)
+            last = None
+            for attempt in range(self.RETRIES):
+                try:
+                    with urllib.request.urlopen(request, timeout=120) as response:
+                        block = response.read()
+                    if len(block) != expected:
+                        raise IOError(f'short range response: got {len(block)}, expected {expected}')
+                    self.cache[block_index] = block
+                    break
+                except (OSError, IOError, urllib.error.URLError) as error:
+                    last = error
+                    self.cache.pop(block_index, None)
+                    if attempt + 1 == self.RETRIES:
+                        raise
+                    print(f'range block {block_index} failed ({error}); retry {attempt + 1}/{self.RETRIES - 1}',
+                          file=sys.stderr, flush=True)
+                    time.sleep(2 ** attempt)
+            else:
+                raise last
         block = self.cache[block_index]
         take = min(len(buffer), len(block) - offset, self.size - self.position)
         buffer[:take] = block[offset:offset + take]
