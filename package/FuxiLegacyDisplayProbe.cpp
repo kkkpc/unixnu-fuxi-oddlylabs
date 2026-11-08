@@ -230,6 +230,17 @@ void native_legacy_vsync_observed(unsigned event, unsigned hz) {
 // patch series reaches this entry from two call sites, so the stage
 // guard makes it idempotent.
 
+extern "C" {
+// The framework patch series declares both probe entry points as
+// plain C: patches/xnu/offline-component-load-probes.patch and
+// patches/xnu/offline-legacy-start.patch patch bsd/kern/bsd_init.c
+// with `extern void native_legacy_display_probe(void);` and
+// `extern void native_legacy_display_late_probe(void);`. The
+// definitions therefore carry C linkage; as plain C++ definitions
+// they exported only the mangled names, and Build #96's final kernel
+// link failed on _native_legacy_display_probe and
+// _native_legacy_display_late_probe.
+
 void native_legacy_display_probe(void);
 void native_legacy_display_probe(void) {
     if (fuxi_legacy_stage) return;
@@ -374,3 +385,5 @@ void native_legacy_display_late_probe(void) {
     printf("fuxi-legacy: late probe: released unstarted surface_status=%d found=%u\n",
            fuxi_legacy_surface_status, fuxi_legacy_surface_found);
 }
+
+}  // extern "C" (the two probe entry points above)

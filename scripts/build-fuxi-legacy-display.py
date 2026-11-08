@@ -251,6 +251,65 @@ def derive_missing_bindings(bindings, audit, compiled, undefined):
     return derived, violations
 
 
+# Optional provider imports ---------------------------------------------------
+# The pinned component declares the Adreno fence query weak_import
+# (NativeLegacyDisplay.cpp:54): its provider is the GPU driver, and
+# both call sites test the symbol's address before calling (:175,
+# :319), so "no provider selected" is a designed state. This board's
+# first round selects no GPU provider. A dynamic link would leave the
+# weak reference unresolved and bind it to 0 at load; the kernel link
+# is static and cannot — Build #96's final link reported the weak
+# import as a hard undefined symbol. The link-level equivalent of the
+# absent-weak binding is an absolute binding to 0 in the bindings
+# object: no code is provided, the address checks take the
+# no-provider path, and the symbol stays out of the record bindings
+# (it is not an original-class address). The allowlist is fixed at
+# one symbol and gated on the evidence that makes the binding honest:
+# the compiled object must import the symbol as a weak reference
+# (n_desc N_WEAK_REF) and the pinned component source must still
+# declare it weak_import with at least two address-availability
+# guards. Any other shape is refused, never silently bound.
+N_WEAK_REF = 0x0040
+OPTIONAL_ABSENT_SYMBOLS = ('_native_adreno_fences',)
+
+
+def optional_absent_bindings(undefined_desc, component_source):
+    """Bind allowlisted optional provider imports to absent (0).
+
+    `undefined_desc` maps each undefined import of the compiled
+    component object to its Mach-O n_desc. Returns (absent,
+    violations): absent maps each bound symbol to 0. A symbol the
+    object does not import at all is not bound (nothing references
+    it); an imported symbol is bound only under the gates documented
+    above, and every gate failure is a violation."""
+    absent = {}
+    violations = []
+    for name in OPTIONAL_ABSENT_SYMBOLS:
+        if name not in undefined_desc:
+            continue
+        if not undefined_desc[name] & N_WEAK_REF:
+            violations.append(
+                f'Optional provider import {name} is not a weak reference '
+                'in the compiled object; refusing to bind it absent')
+            continue
+        plain = name[1:] if name.startswith('_') else name
+        declaration = component_source.split(plain, 1)[-1].split(';', 1)[0] \
+            if plain in component_source else ''
+        if 'weak_import' not in declaration:
+            violations.append(
+                f'Optional provider import {name} is not declared weak_import '
+                'in the pinned component source; refusing to bind it absent')
+            continue
+        if component_source.count('&' + plain) < 2:
+            violations.append(
+                f'Optional provider import {name} has fewer than two '
+                'address-availability guards in the component source; '
+                'refusing to bind it absent')
+            continue
+        absent[name] = 0
+    return absent, violations
+
+
 # --- Gate 2: locate the verification original in the actual tree ------------
 # Framework layout (scripts/unixnu/config.py, scripts/unixnu/ipsw.py): the
 # tree is <out_root>/<device>/<os>/<work>/tree, the framework checkout is one
@@ -431,9 +490,13 @@ image = macho(raw)
 st = next(p for c, p, _ in image['commands'] if c == 2)
 sy, count, strings, _ = struct.unpack_from('<4I', raw, st + 8)
 symbols = []
+undefined_desc = {}
 for i in range(count):
-    ix, kind, section, _, va = struct.unpack_from('<IBBHQ', raw, sy + i * 16)
-    symbols.append((raw[strings + ix:raw.index(b'\0', strings + ix)].decode(), va, kind))
+    ix, kind, section, desc, va = struct.unpack_from('<IBBHQ', raw, sy + i * 16)
+    name = raw[strings + ix:raw.index(b'\0', strings + ix)].decode()
+    symbols.append((name, va, kind))
+    if kind == 1:
+        undefined_desc[name] = desc
 vtable = next(va for name, va, _ in symbols if name == '__ZTV19NativeLegacyDisplay')
 relocations = {}
 for segment in image['segments']:
@@ -489,9 +552,21 @@ require(set(bindings) <= undefined,
 stray = {n for n in undefined if 'IOMobileFramebufferLegacy' in n and n not in bindings}
 require(not stray, 'Component object imports unqualified original-class symbols: ' + ', '.join(sorted(stray)))
 
+# --- Optional provider imports: bind the unselected ones absent --------------
+component_source = (ROOT / 'drivers/GopFramebuffer/NativeLegacyDisplay.cpp').read_text()
+absent_bindings, absent_violations = optional_absent_bindings(undefined_desc, component_source)
+if absent_violations:
+    for violation in absent_violations:
+        print(f'fuxi-legacy: GATE 3 VIOLATION: {violation}')
+    raise SystemExit(f'Gate 3 failed: {len(absent_violations)} optional-import violation(s), listed above in full')
+for name in sorted(absent_bindings):
+    print(f'fuxi-legacy: optional provider import {name}: no provider selected on this board; '
+          'binding it absent (0) under the weak-import gates')
+
 # --- Bindings object ----------------------------------------------------------
 asm = OUT / 'original-bindings.S'
-asm.write_text(''.join(f'.globl {name}\n.set {name}, {va:#x}\n' for name, va in sorted(bindings.items())))
+asm.write_text(''.join(f'.globl {name}\n.set {name}, {va:#x}\n'
+                       for name, va in sorted({**bindings, **absent_bindings}.items())))
 sdk = run(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], text=True).strip()
 run(['xcrun', 'clang', '-target', TRIPLE, '-isysroot', sdk, '-c', asm, '-o', OUT / 'original-bindings.o'])
 
@@ -558,6 +633,16 @@ sources = [ROOT / 'drivers/GopFramebuffer/NativeLegacyDisplay.cpp',
     compiled_object_sha256=sha(obj), late_object_sha256=sha(late),
     glue_object_sha256=sha(glue_obj), archive_sha256=sha(archive),
     bindings={n: hex(v) for n, v in bindings.items()}, virtual_entries=358,
+    optional_absent_bindings={n: hex(v) for n, v in absent_bindings.items()},
+    optional_absent_provenance='Provider hooks the pinned component declares weak_import and calls '
+                               'only behind address-availability checks, bound to 0 (absent) because '
+                               'this board selects no provider for them in round 1 and the static '
+                               'kernel link cannot leave a weak reference unresolved (Build #96). No '
+                               'implementation is provided; the component takes its designed '
+                               'no-provider path. The set is the fixed allowlist '
+                               'OPTIONAL_ABSENT_SYMBOLS, each entry gated on the compiled object '
+                               'importing the symbol as a weak reference (n_desc N_WEAK_REF), on the '
+                               'weak_import declaration, and on the guarded call sites.',
     derived_bindings=derived_bindings,
     derived_bindings_provenance='Bindings absent from the E2 record bindings map were derived '
                                 'from the record method table only, in the accounted forms '
