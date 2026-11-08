@@ -2,6 +2,8 @@
 
 **语言 / Language：** [中文版](#中文版) | [English](#english)
 
+## 中文版
+
 [![Build](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml/badge.svg)](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml)
 [![Device documentation](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/porting-record.yml/badge.svg)](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/porting-record.yml)
 
@@ -150,6 +152,137 @@ cd drivers/FuxiFtsTouch && for t in fts-protocol touch-core; do gcc -std=c11 -Wa
 ## 许可证
 
 BSD-2-Clause-Patent，见 [LICENSE](LICENSE)。
+
+
+## English
+
+# unixnu-fuxi: UniXNU device repository for Xiaomi 13 (fuxi)
+
+This repository contains the board-specific files, probes, boot hooks and hardware facts for Xiaomi 13 (fuxi, SM8550). The primary technical reference is [fuxi_touch_panel_porting.md](fuxi_touch_panel_porting.md); subsystem status is tracked in [porting.toml](porting.toml).
+
+This is the owner's imported working copy. The native UFS root and full-system boot line lives on native-ufs-root; main is the imported baseline. Current handoffs: [Issue #2](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/2) (persistent Data closed, 2026-11-06) and [Issue #4](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/4) (Stage ② opened, SpringBoard exit diagnosis and display audit, 2026-11-07). The old ram-system-probe branch was archived as tag archive/ram-system-probe-2026-11-07; its five unique commits remain reachable from that tag. The project is in step 6 of the official eight-step device-porting path: storage is complete, touch is validated, and display is the current blocker.
+
+## Current status
+
+| Subsystem | Status |
+|---|---|
+| Touch (ST FTM5) | Driver and staged probes are implemented. Stage 3 passed on-device on 2026-11-02: power, clocks, pins and 12 MHz SPI worked; the controller returned its ready event and chip ID 36 40. Stage 4 passed in polling and interrupt modes, including press/move/release coordinates and two-finger tracking; it also worked with all eight cores running. The probe must vote for touch power through RPMh. ShengHidInput is integrated and verified: touch events are emitted as HID reports (68 groups in one run, all successful). One spontaneous reboot occurred in eight interrupt-enabled boots; its cause remains unknown. |
+| Firmware and boot image | CI builds DEBUG firmware and fastboot-bootable images; only encrypted images are uploaded. On 2026-11-02 the bootloader accepted the image, firmware, UniXNU menu and DarwinBoot worked, and XNU reached bsd_init. The missing Sheng AMP patch and the panic-region address configuration were corrected. Firmware memory maps were corrected for 8 GB and 12 GB devices; the 12 GB device boots. See evidence/2026-11-02-first-boot.md. |
+| Storage | Native UFS root is verified on-device. ShengUfs reads the SHNGROOT manifest from userdata and publishes read-only OS and SystemOS windows. The geometry was derived from the stock GPT; the root image was flashed on 2026-11-05 with the owner's one-time approval (Android /data was erased; rollback requires reflashing the stock ROM). APFS System mounting and owner trust authentication passed. chain46 reached launchd at LC_MAIN after the SystemOS union/cache mount was enabled. Temporary Data boot was converted from dense delivery (black-screen failures) to packed DBRDISK1 delivery; chain51 reproduced the CI result on-device. Persistent Data Phase A/B/C closed on 2026-11-06. The storage window starts at first_lba 0x57bd52 and uses a 213 GiB seed container. chain55 initialised and wrote the window; chain56 was correctly rejected because its newly generated CI seed had different bytes; chain57 resumed using the exact chain55 seed and proved cross-reboot persistence. Preserve the exact chain55 seed identity (SHA-256 prefix df83bf77); do not substitute a newly generated seed. The recovery-disk path also previously booted launchd, restored_external and mount_tmpfs. |
+| CPU | On 2026-11-02, PSCI started all seven secondary cores with sheng-smp=1 and armcpu-spi-ipi=1; the scheduler saw eight cores. armcpu-self-ipi=1 was also required for working IPIs. Cores 1 and 2 have not shown timer interrupts. Removing armcpu-spi-ipi caused SGIs to stop working; one of nine multicore boots failed to start all secondary cores, cause unknown. |
+| Userland and Stage ② (functional UI/display) | Skip Setup's functional goal was reached on-device on 2026-11-07: the device did not enter Setup and reached SpringBoard. The implementation intentionally uses a kernel writer (package/BootWatchdogPolicy.c) on persistent Data rather than the official payload --skip-setup seed-copy route; SetupDone's value has not been read directly and payload.json remains skip_setup: false. chain58 showed no graphical frames. chain59 proved only that the SetupDone key exists. chain60 observed 14 SpringBoard cycles ending in SIGTRAP. chain61 correlated all 16 exits with the same EL0 breakpoint at PC/LR 0x1a721f2ec, ESR 0xf2000000 (BRK #0). Host-side dyld-cache analysis located it in FrontBoardServices -[FBSDisplaySource initWithCADisplay:] +0x47c: main CADisplay lookup fails, logs failed to find the main CADisplay, then falls through to BRK #0. This is a deliberate assertion, not an external kill. Phase 2 exit-reason kcdata work was deferred after Phase 1 and symbol analysis answered the core question. |
+| Display | Current step-6 blocker. Read-only audits found the first gap at the L2 display-provider layer. Firmware GOP and the kernel text console work; Apple IOMobileFramebuffer/IOSurface components are present in the prelinked kernel, but the GOP framebuffer is not published as an IOKit display provider. GopFramebuffer (pin 19ef3a75) is not selected by board.toml, fuxi_defconfig lacks CONFIG_XNU_NATIVE_LEGACY_DISPLAY, and no device builder or offline-legacy-* boot arguments are wired. The same-SoC sheng port has verified the component integration shape, but its panel details must not be copied: fuxi uses a Samsung DDIC AMOLED, DSI command mode with DSC, and DCS backlight control. Host-only experiment plan E1–E7 is prepared; device boots remain paused pending review. |
+| USB diagnostics | QcomXnuUsbDebug is vendored under package/drivers/QcomXnuUsbDebug and built by scripts/build-fuxi-usb-debug.py. USB CDC logging was captured on usb1/chain60/chain61 (VID 0x1209, PID 0x316d). The remote reset integration remains disabled with QUD_CONTROL_REBOOT=0; do not enable the REBOOT verb. |
+| GPU, networking and audio | Planned. Display and power hardware references have been collected. See the plan comment on Issue #1. |
+
+## Related repositories
+
+| Repository | Role |
+|---|---|
+| [OddlyLabs/UniXNU](https://github.com/OddlyLabs/UniXNU) | UniXNU fork on branch fuxi; adds FuxiFtsTouch to the component catalog and the fuxi-specific bootimg options. |
+| [OddlyLabs/uefi-fuxi](https://github.com/OddlyLabs/uefi-fuxi) | Firmware fork based on UniXNU/uefi-sheng, carrying nine fuxi commits from matejkoo217/uefi-fuxi with original authorship retained. |
+| [OddlyLabs/FuxiFtsTouch](https://github.com/OddlyLabs/FuxiFtsTouch) | Pure-C FTM5 protocol and touch-tracking component with host tests; referenced as a submodule. |
+| This repository | Board files, probes, boot-hook patches and hardware references. |
+
+UniXNU provides the UniXNUPkg boot menu and DarwinBoot XNU loader as UEFI modules. They require board-specific UEFI firmware. This device uses official uefi-sheng plus the verified fuxi commits, keeping upstream changes separable from device-specific changes.
+
+## Repository layout
+
+| Path | Contents |
+|---|---|
+| board.toml, feeds.toml, configs/fuxi_defconfig | Board, component selection, archive order, SoC version and kernel configuration. |
+| dts/fuxi.dts | Device tree, including sm8550.dtsi from UniXNU-sm8550-common. |
+| patches/xnu/ | fuxi-touch-probe.patch; calls the touch probe from bsd_init. |
+| package/ | Build-tree kit for fuxi: touch probe and board constants; selected PMGR bridge files are unchanged copies from UniXNU-sheng. |
+| scripts/build-fuxi-touch.py | Uses XNU build records to compile the probe and driver into libFuxiTouch.a. |
+| scripts/build-fuxi-platform-power.py, ci/check-pmgr-bridge.py | Build and verify the PMGR bridge contract with AMFI. |
+| scripts/build-fuxi-data-seed.py, scripts/pack-fuxi-data-seed.py, scripts/grow-fuxi-data-seed.py | Create the APFS Data seed, pack it as DBRDISK1 and grow the persistent container. |
+| scripts/build-fuxi-usb-debug.py, package/drivers/QcomXnuUsbDebug/ | Vendored USB diagnostic module and wrapper; reset is compiled out. |
+| drivers/FuxiFtsTouch | FuxiFtsTouch submodule. |
+| porting.toml | UniXNU-format porting record. |
+| tests/board_test.c | Board-constant tests. |
+| ci/boot-image-recipient.pem, ci/decrypt-boot-image.sh, ci/check-boot-image.py | Boot-image encryption public key, local decryption helper and pre-boot image checker. |
+| facts/ | Touch/panel facts extracted from the stock device tree, including 73 DSI command groups. |
+
+Local dtb/, firmware/, power/ and ref_src/ directories are ignored by Git. They contain vendor files, diagnostic references or GPL reference source for inspection only.
+
+## Build
+
+The reference build environment is macOS with Xcode 26; UniXNU also supports Linux toolchains. Clone the device repository and the two fuxi forks side by side:
+
+```bash
+git clone --recurse-submodules https://github.com/OddlyLabs/unixnu-fuxi
+git clone -b fuxi https://github.com/OddlyLabs/UniXNU
+git clone -b fuxi https://github.com/OddlyLabs/uefi-fuxi
+```
+
+From the UniXNU directory:
+
+```bash
+./unixnu defconfig fuxi_defconfig -D ../unixnu-fuxi
+./unixnu build kernel
+./unixnu build payload --uefi ../uefi-fuxi --unique-chip-id 0x0123456789abcdef
+./unixnu build firmware --uefi ../uefi-fuxi --target DEBUG
+./unixnu bootimg --uefi ../uefi-fuxi --target DEBUG --dtb ../uefi-fuxi/Platforms/Xiaomi/fuxiPkg/FdtBlob/sm8550-xiaomi-fuxi.dtb
+```
+
+The sample unique-chip-id is a fixed test value, also used in CI bring-up images. A full-system verification image is assembled locally with the device's actual ID; the real ID must never enter the repository. Firmware-only builds do not require Apple files and can run on Linux; in addition to clang/lld/LLVM tools, BaseTools requires uuid-dev. The commands above passed on Ubuntu 26.04 under WSL with clang 21.1.8 on 2026-11-01; the firmware volume was 0x300000 bytes.
+
+## CI (GitHub Actions)
+
+| Job | Environment | Checks |
+|---|---|---|
+| Host tests | Ubuntu | FuxiFtsTouch tests with gcc/clang and ASan/UBSan, board constants and script syntax. |
+| Kernel-target compile | macOS 26 + Xcode | Compiles driver C as arm64 kernel code and checks that it does not call libc. |
+| fuxi boot image | macOS 26 + Xcode | Builds XNU through archive/link/prelink, checks the touch probe and bsd_init call, then builds payload, firmware and boot image; encrypted image is uploaded. |
+| Porting record | Ubuntu | Runs the fork's UniXNU checker against porting.toml. |
+
+The boot image contains Apple kernelcache material, so only the version encrypted with ci/boot-image-recipient.pem is uploaded. The private key stays on the owner's computer; other artifacts are text logs only.
+
+## Device boot
+
+Use fastboot boot only; do not write partitions.
+
+1. Download the encrypted fuxi-boot-image artifact and decrypt it locally with bash ci/decrypt-boot-image.sh <private-key> <artifact-directory>.
+2. Run python3 ci/check-boot-image.py <artifact-directory>/boot.img <artifact-directory>/boot.json ../uefi-fuxi. Continue only when all image/header, load-offset, firmware-volume, payload, ADT and boot-argument checks report ok.
+3. Put the phone in fastboot mode and run fastboot boot boot.img.
+4. The default bring-up image reaches touch stage 4 and reports touch events as HID; the screen stops at the touch report page. Full-system images are assembled locally with the decrypted artifacts and the phone's actual chip ID, still using fastboot boot only. SYS lines and initproc failure reasons are the stage diagnostics.
+5. Reboot to Android. Because userdata was repurposed, Android /data is no longer available; see the storage status and rollback warning above.
+
+### Entry-probe images for early XNU diagnosis
+
+Before the XNU console is available, the top-of-screen colour bar is the visible signal: green means DarwinBoot handed off control, blue means the kernel was entered, and magenta means the MMU is about to be enabled. Later checkpoints can be tested with an entry probe that waits briefly and reboots. If the phone reboots, execution reached the probe; if it remains at the colour bar, it stopped earlier.
+
+Follow the Entry probe reset section of the UniXNU debugging guide. CI builds the kernel; payload and boot image can be generated locally without a Mac:
+
+1. Decrypt the artifact; alongside boot.img, obtain the unpatched kernel.macho.
+2. Export the exact tested firmware volume: python3 ci/check-boot-image.py boot.img boot.json ../uefi-fuxi --fd-out fd.bin.
+3. In a temporary device-repository copy, add entry_probe_reset_delay = 6 under board.toml [payload] (reboot after MMU enable), optionally with entry_probe_reset_after = "_arm_vm_init". Do not commit these probe settings.
+4. Build the payload and image from the UniXNU directory, pointing -D to the temporary copy:
+
+```bash
+./unixnu build payload -D <temporary-copy> --uefi ../uefi-fuxi --kernel <kernel.macho> --unique-chip-id 0x0123456789abcdef
+./unixnu bootimg -D <temporary-copy> --uefi ../uefi-fuxi --fd <fd.bin> --dtb ../uefi-fuxi/Platforms/Xiaomi/fuxiPkg/FdtBlob/sm8550-xiaomi-fuxi.dtb -o probe.img
+```
+
+Linux requires clang, lld, LLVM tools, dtc and mtools. Boot the probe with fastboot boot. A delayed probe needs no photo: an automatic reboot proves that execution reached the configured checkpoint.
+
+## Maintenance
+
+- Merge UniXNU/UniXNU main into OddlyLabs/UniXNU fuxi; merge UniXNU/uefi-sheng sheng into OddlyLabs/uefi-fuxi fuxi.
+- Update the pinned UNIXNU_REF and UEFI_REF commits in .github/workflows/build.yml and rerun CI.
+- For every subsystem change, update the corresponding finding/evidence in porting.toml and run the record checker.
+
+## Local tests
+
+```bash
+cd drivers/FuxiFtsTouch && for t in fts-protocol touch-core; do gcc -std=c11 -Wall -Wextra -Werror -I. Test/$t.c FtsProtocol.c FtsTouchCore.c -o /tmp/$t && /tmp/$t; done
+```
+
+## License
+
+BSD-2-Clause-Patent; see [LICENSE](LICENSE).
+
 
 **语言 / Language：** [中文版](#中文版) | [English](#english)
 
