@@ -201,7 +201,8 @@ jobs:
           # from it), so those defaults are repeated verbatim ahead of the module's flags.
           XNU_EXTRA_CFLAGS: "-Wno-reserved-identifier -Wno-pre-c11-compat -Wno-missing-designated-field-initializers -Wno-suggest-override -Wno-unnecessary-virtual-specifier -Wno-suggest-destructor-override -Wno-ms-bitfield-padding -DXNU_QCOM_USB_DEBUG=1 -I${{ github.workspace }}/fuxi/package/drivers/QcomXnuUsbDebug/include"
         run: |
-          ./unixnu build kernel --device "$GITHUB_WORKSPACE/fuxi"
+          set -o pipefail
+          ./unixnu build kernel --device "$GITHUB_WORKSPACE/fuxi" 2>&1 | tee "$RUNNER_TEMP/fuxi-build-97-final-link.log"
           ./unixnu status --device "$GITHUB_WORKSPACE/fuxi" --json > "$RUNNER_TEMP/unixnu-status.json" || true
       - name: Check the touch probe, the PMGR bridge, the HID and RAM block bindings in the kernel
         run: |
@@ -323,6 +324,10 @@ jobs:
           # Only text files leave the runner in the clear: the kernel, the kernelcache and IPSW members derive from Apple software.
           mkdir -p "$RUNNER_TEMP/logs"
           find unixnu/out -path '*/logs/*.log' -size -20M -exec cp {} "$RUNNER_TEMP/logs/" \; 2>/dev/null || true
+          # kernel.log carries the full make output, including the final link's diagnostics;
+          # it exceeds the 20M cap above, so copy it explicitly, with the Build kernel tee.
+          find unixnu/out -path '*/logs/kernel.log' -exec cp {} "$RUNNER_TEMP/logs/" \; 2>/dev/null || true
+          cp "$RUNNER_TEMP/fuxi-build-97-final-link.log" "$RUNNER_TEMP/logs/" 2>/dev/null || true
           cp "$RUNNER_TEMP/unixnu-status.json" "$RUNNER_TEMP/logs/" 2>/dev/null || true
           [ -f fuxi/unixnu.lock ] && cp fuxi/unixnu.lock "$RUNNER_TEMP/logs/unixnu.lock" || true
           ls -l "$RUNNER_TEMP/logs"
