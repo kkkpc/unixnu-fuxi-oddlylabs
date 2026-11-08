@@ -162,8 +162,17 @@ kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmg
                # Legacy GOP display, round 1 (registration/enumeration only): load the graphics family,
                # permit the legacy probe and the component's registerService, enable the GOP backend,
                # and run the phase-4 park-then-start flow. Presentation arguments (pm/validate/transfer/
-               # cpu-present/vsync) stay out until the E3 handoff evidence gate passes.
-               "offline-mobile-graphics-load=1", "offline-legacy-register=1", "offline-legacy-gop=1", "offline-legacy-phase=4"]
+               # cpu-present) stay out.
+               "offline-mobile-graphics-load=1", "offline-legacy-register=1", "offline-legacy-gop=1", "offline-legacy-phase=4",
+               # Round 2 (single-variable experiment, owner-approved 2026-11-08): sheng-vsync=120 is the
+               # refresh rate REQUESTED of the component's timer-faked vsync, taken from sheng's verified
+               # recipe - a requested rate, not a fuxi panel measurement. Build #100 (no vsync argument)
+               # registered the display (late probe started, framebuffer live) but SpringBoard died in
+               # FrontBoardServices' FBSDisplayMode configuration validation; without this argument the
+               # component's weak native_legacy_refresh_hz() returns 0, so no refresh properties are
+               # published (publication requires hz > 60) and the vsync tick stays off. This is the only
+               # argument that changes in this round.
+               "sheng-vsync=120"]
 
 [payload.adt]
 # Deliver the Data seed packed (DBRDISK1): DarwinBoot copies only the nonzero extents
