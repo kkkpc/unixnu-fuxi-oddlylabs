@@ -44,3 +44,16 @@ Never flash the device. A test image is started with `fastboot boot` only, and o
 
 `porting.toml` is the shared record. Update the findings or evidence of each area whose files a change touches, and run
 the record checker. Report host results and device observations separately, with the commit they were made at.
+
+## Fast iteration rules (mandatory)
+
+- Optimise for the next verified boot milestone, not subsystem completeness. Name the next acceptance signal before editing.
+- Preserve a known-good baseline and reuse compatible kernel, firmware, ADT, trust, Data seed and package inputs by exact revision/hash. Never reopen a passed gate without evidence.
+- Diagnose the earliest failing transition before coding. Capture decisive checkpoints, return codes, symbols/PCs, registers, mount/UUID state or service exit reasons. Prefer diagnostics that survive reboot or are visible on-screen.
+- Change one root cause / one variable per candidate. Add a focused regression that demonstrates the old failure and corrected behavior. Avoid speculative cleanup bundled with a fix; revert regressions rather than stacking workarounds.
+- Use the shortest complete loop: focused host regression → exact ABI/type validation → real ARM64 compile/link → artifact/input pairing and readback → uniquely identified candidate → owner-approved temporary device boot.
+- Device testing is `fastboot boot` only. Never flash or write partitions without separate, explicit owner approval.
+- Preserve full logs and build reports on both success and failure. Ensure shell failure handling still collects status/report artifacts; do not silently omit oversized logs.
+- Stop at the milestone: `launchd` confirms userland; then validate Data/services; then SpringBoard/display. Unrelated GPU, Wi-Fi, audio or peripheral work must not delay an earlier milestone.
+- Record exact source revisions, changed variable, commands, test outcomes, image/input hashes, last confirmed stage, device observation and one next blocker. Separate documented facts, host tests, device evidence and hypotheses.
+- Consult the official UniXNU guide for the current stage before reasoning; do not guess. Never report an edit/build/boot as complete without read-back evidence.
