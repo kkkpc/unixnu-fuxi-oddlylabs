@@ -146,7 +146,7 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # starts the HID device that turns its contacts into reports (kits/fuxi/FuxiHidProbe.cpp; sheng-touch-hid=1 gives that device
 # its digitizer collection). The diagnostic panic is disabled on the lockscreen path; reports remain in the serial/USB log.
 # Without a touch the boot ends in the root device wait.
-# native-ufs-root=1 selects the ShengUfs root in the userdata reserve (the full OS, flashed
+# native-fuxi-ufs-root=1 selects the ShengUfs root in the userdata reserve (the full OS, flashed
 # once) over the RAM-disk root; the touch probe's SYS row then reports the UFS root.
 # sheng-data-persist=2 (persistent Data phase C resume boot, 2026-11-06; the install
 # boot at f35f8863 carried sheng-data-reset=1, the only path that initialises a blank
@@ -160,9 +160,11 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # assumes (the driver's default is the same 1024 MiB; it is written out so the
 # window sizing has one visible source).
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1",
-               "armcpu-self-ipi=1", "fuxi-touch=4", "fuxi-touch-hid=1", "sheng-touch-hid=1", "native-ufs-root=1",
+               "armcpu-self-ipi=1", "fuxi-touch-stage=4", "fuxi-touch=4", "fuxi-touch-hw=7", "fuxi-touch-hid=1", "sheng-touch-hid=1", "native-fuxi-ufs-root=1",
                "sheng-data-persist=2", "sheng-log-reserve=1024", "sheng-skip-setup=1", "sheng-lite=1",
+               "sheng-setup=0", "sheng-log=1", "sheng-dpu=3", "sheng-cpufreq=4", "sheng-backlight=1", "fuxi-backlight=dsi",
                "sheng-disable-watchdogd=1", "sheng-vsync=120",
+               "offline-key-events=1", "-apfs_shared_datavolume", "-no_slto_panic", "ml-timeout-lock-panic-scale=40",
                "offline-legacy-phase=4", "offline-legacy-register=1", "offline-legacy-gop=1",
                "offline-legacy-pm=1", "offline-legacy-validate=1", "offline-legacy-transfer=1",
                "offline-legacy-cpu-present=1", "offline-legacy-unit-scale=2",

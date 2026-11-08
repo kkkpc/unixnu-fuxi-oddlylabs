@@ -961,13 +961,11 @@ static size_t control_reply_reboot(char *reply, size_t capacity,
         !sxnu_control_writer_text(&writer, reason)) return 0;
     return sxnu_control_reply_finish(&writer);
 }
-/* Consumer adaptation (kkkpc/unixnu-fuxi-oddlylabs, log-only integration): the reset layer behind
- * qcom_reset_request is not provided yet, so the control reboot commit path can be compiled out with
- * -DQUD_CONTROL_REBOOT=0; both reboot verbs then answer ERR/unsupported instead of queueing a reset
- * that would never happen. The default keeps upstream behaviour bit-for-bit, including in the host
- * model tests, which extract this region and compile it without the define. */
+/* Consumer adaptation (kkkpc/unixnu-fuxi-oddlylabs, hard log-only integration): panic/reboot recovery
+ * is never enabled in production. Both reboot verbs must answer ERR/unsupported instead of queueing
+ * a reset or a fastboot transition. A build may explicitly override this only for isolated host tests. */
 #ifndef QUD_CONTROL_REBOOT
-#define QUD_CONTROL_REBOOT 1
+#define QUD_CONTROL_REBOOT 0
 #endif
 static void control_handle_frame(const struct sxnu_control_frame *frame,
                                  const struct qcom_usb_debug_status *status,

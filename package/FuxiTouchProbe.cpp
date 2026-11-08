@@ -589,7 +589,11 @@ static void touchThread(void *, wait_result_t) {
 
 extern "C" void native_touch_probe(void) {
     unsigned stage = 0;
-    if (!PE_parse_boot_argn("fuxi-touch", &stage, sizeof stage) || stage < 1 || native_touch_stage_req) return;
+    // The V2 image names the final hardware stage explicitly; retain the
+    // original spelling as a compatibility alias for older images.
+    if (!PE_parse_boot_argn("fuxi-touch-stage", &stage, sizeof stage))
+        PE_parse_boot_argn("fuxi-touch", &stage, sizeof stage);
+    if (stage < 1 || native_touch_stage_req) return;
     if (stage > 4) stage = 4;
     native_touch_stage_req = stage;
     thread_t thread = nullptr;

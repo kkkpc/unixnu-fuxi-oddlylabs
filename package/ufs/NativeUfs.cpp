@@ -2157,7 +2157,13 @@ bool NativeUfs::start (IOService *provider)
 {
   unsigned probe = 0, rootMode = 0;
   PE_parse_boot_argn ("native-ufs-probe", &probe, sizeof (probe));
-  PE_parse_boot_argn ("native-ufs-root", &rootMode, sizeof (rootMode));
+  // V2's successful image uses the fuxi-qualified spelling. Keep the older
+  // generic spelling as a compatibility alias for existing local images.
+  unsigned fuxiRootMode = 0;
+  PE_parse_boot_argn ("native-fuxi-ufs-root", &fuxiRootMode, sizeof (fuxiRootMode));
+  if (!PE_parse_boot_argn ("native-ufs-root", &rootMode, sizeof (rootMode)) || !rootMode) {
+    rootMode = fuxiRootMode;
+  }
   native_ufs_probe_requested = probe != 0;
   // Default: match for observability only, never touch the controller. Hardware work runs once,
   // from the root-device personality; the ufshc nub match stays observation-only.
