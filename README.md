@@ -149,24 +149,54 @@ cd drivers/FuxiFtsTouch && for t in fts-protocol touch-core; do gcc -std=c11 -Wa
 
 BSD-2-Clause-Patent，见 [LICENSE](LICENSE)。
 
-## Fast bring-up and iteration policy
+**语言 / Language：** [中文版](#中文版) | [English](#english)
 
-The project optimises for the next verified boot milestone, not for completing every subsystem. Use the OnePlus 13T port's demonstrated workflow: preserve a known-good baseline, change one blocking variable at a time, make failures observable, and return a new testable image quickly.
+## 中文版
 
-1. **Keep the baseline immutable.** Reuse already-verified kernel inputs, firmware, ADT, trust cache, Data seed and packaging wherever compatible. Record exact commit/revision and hashes. Do not rebuild or reopen passed stages without evidence that the current failure implicates them.
-2. **Work backwards from the next user-visible milestone.** The first hard userland milestone is `launchd` running; then verify Data/services; then SpringBoard/display. Do not block userland validation on Wi-Fi, audio, GPU acceleration or unrelated peripherals. State the exact acceptance signal for each milestone.
-3. **Diagnose before changing code.** Identify the earliest unverified transition and capture the smallest decisive evidence (checkpoint, return code, symbol/PC, register, mount/UUID, service exit reason). Prefer persistent or screen-visible diagnostics that survive the next reboot. Distinguish documented facts, host-verified facts, device observations and hypotheses.
-4. **One root cause / one controlled change per iteration.** Reproduce the old failure in a focused host regression where practical, prove the corrected case, and avoid bundling speculative cleanups. If a candidate regresses a known-good milestone, revert that change rather than layering workarounds on top.
-5. **Use the shortest complete validation loop.** Run focused host tests → exact ABI/type checks → real ARM64 compile/link → artifact and input-pairing/readback checks → produce a uniquely identified candidate → obtain owner approval before any device boot. Device tests use temporary boot only; never flash or write partitions without separate explicit approval.
-6. **Make every CI run useful.** Preserve full build logs and reports, including failure paths. Collect status/report artifacts even when the main build command fails; do not let shell `errexit` hide post-failure diagnostics. Keep artifact collection limits from silently excluding large logs.
-7. **Stop when the milestone is reached.** Once `launchd` is confirmed, do not keep debugging kernel bring-up unless new evidence requires it. Once SpringBoard is reached, isolate display/user-space issues without reopening completed storage, trust or boot-chain work.
-8. **Close the loop in the repository.** For each iteration record the changed variable, source revision, commands, test results, exact image/input identities, last confirmed boot stage, device observation and next single blocker. Update the affected porting-record area and README only with evidence-backed status.
+## 快速 bring-up 与证据驱动迭代政策
 
-### Current execution discipline
+本项目优先抵达下一个可验证启动里程碑，而不是先完成所有子系统。采用 OnePlus 13T 移植中验证有效的节奏：固定已知良好基线、每轮只改变一个阻塞变量、让失败可观测，并尽快产出可测试候选。
 
-- The current project objective is the shortest evidence-backed path to a real userland/UI milestone, not broad driver completeness.
-- Keep completed archive/build gates frozen. Do not repeat successful archive gates, ABI audits or setup work unless a new error points directly to them.
-- For a linker or runtime failure, inspect the exact declaration, generated relocation/binding and linked artifact before proposing a source-level workaround. A source null check does not make an invalid relocation safe.
-- Never infer success from a generated file's expected path or a workflow summary. Fetch the actual artifact/log and verify it.
-- Follow the official UniXNU documentation for the current stage before relying on assumptions; explicitly label anything the docs do not specify.
-- Do not claim a build, boot, code change or device result until the corresponding GitHub/CI/device evidence has been read back and verified.
+1. **冻结基线：** 按精确 revision/hash 复用已验证的内核输入、固件、ADT、trust cache、Data seed 与打包配置；无证据不得重开已通过阶段。
+2. **明确里程碑：** `launchd` 正在运行是 userland 硬指标；随后验证 Data/services，再推进 SpringBoard/display。无关 GPU、Wi-Fi、音频和外设不得阻塞更早里程碑。
+3. **先诊断：** 找到最早未验证的启动转换点，采集 checkpoint、返回码、symbol/PC、寄存器、mount/UUID 或服务退出原因。优先使用可持久化或屏幕可见的诊断，并区分文档事实、主机验证、真机观察与假设。
+4. **单点修复：** 每轮只处理一个根因/一个变量；用聚焦回归复现旧故障并验证修复。若破坏已知良好阶段，回退该改动，不叠加 workaround。
+5. **最短完整闭环：** 主机回归 → 精确 ABI/type 检查 → 真 ARM64 编译/链接 → 构件与输入配对/readback → 唯一标识候选镜像 → 经所有者明确要求后临时启动。
+6. **设备安全：** 设备验证只用 `fastboot boot`；任何刷写或分区写入都必须另行取得明确批准。
+7. **CI 可诊断：** 成功与失败都保留完整日志和 build report；构建失败后仍收集 status/report，避免 shell `errexit` 隐藏证据或因文件过大漏收日志。
+8. **到点停止：** 确认 `launchd` 后不无故重查内核；到达 SpringBoard 后只隔离显示/用户空间问题，不重开已完成的存储、trust、启动链。
+9. **证据分级：** 文档事实、主机测试、构建/链接、构件 readback、真机观察分开报告。文件生成、主机测试通过、bootloader 接受或 workflow summary 都不能证明后续阶段成功。
+10. **每轮闭环记录：** 记录改动变量、源码 revision、命令、测试结果、镜像/输入身份与 hash、最后确认阶段、真机观察和唯一下一阻塞点；README 与 porting.toml 只写有证据的状态。
+
+### 当前应用
+
+- 冻结已完成的 archive/build gates；除非新错误直接指向它们，否则不重复 archive-01～18、ABI 审计或 setup。
+- 对链接/运行时错误，先核对真实声明、relocation/binding 和最终构件。源码空指针检查不能消除非法链接 relocation。
+- 不按预期路径或 workflow 摘要推断成功，必须读取并核验真实 artifact/log。
+- 当前阶段先查 UniXNU 官方文档；没有文档依据的部分标为假设，不猜测。
+- 未经 GitHub/CI/设备 readback，不得宣称修改、构建或启动成功。
+
+## English
+
+## Fast bring-up and evidence-driven iteration policy
+
+The project prioritises the next verifiable boot milestone over completing every subsystem. Follow the proven OnePlus 13T cadence: freeze the known-good baseline, change one blocking variable per iteration, make failures observable, and produce a testable candidate quickly.
+
+1. **Freeze the baseline:** Reuse verified kernel inputs, firmware, ADT, trust cache, Data seed and packaging by exact revision/hash. Do not reopen passed stages without evidence.
+2. **Name the milestone:** `launchd` running is the hard userland signal; then verify Data/services, followed by SpringBoard/display. Unrelated GPU, Wi-Fi, audio and peripherals must not block an earlier milestone.
+3. **Diagnose first:** Find the earliest unverified boot transition and capture checkpoints, return codes, symbols/PCs, registers, mount/UUID or service exit reasons. Prefer persistent or screen-visible diagnostics. Separate documented facts, host verification, device observations and hypotheses.
+4. **Fix one thing:** One root cause/one variable per iteration. Use a focused regression to reproduce the old failure and prove the fix. Revert a change that regresses a known-good milestone; do not stack workarounds.
+5. **Shortest complete loop:** Host regression → exact ABI/type checks → real ARM64 compile/link → artifact and input pairing/readback → uniquely identified candidate → temporary boot only after an explicit owner request.
+6. **Device safety:** Device validation uses `fastboot boot` only. Any flashing or partition write requires separate explicit approval.
+7. **Diagnosable CI:** Preserve full logs and build reports on success and failure. Collect status/report after failed builds; do not let shell `errexit` hide evidence or omit oversized logs.
+8. **Stop at the milestone:** After `launchd` is confirmed, do not revisit kernel bring-up without new evidence. After SpringBoard is reached, isolate display/user-space issues without reopening completed storage, trust or boot-chain work.
+9. **Evidence levels:** Report documentation, host tests, build/link, artifact readback and device observations separately. A generated file, passing host test, bootloader acceptance or workflow summary does not prove a later stage.
+10. **Repository closure:** Record the changed variable, source revisions, commands, results, image/input identities and hashes, last confirmed stage, device observation and one next blocker. Update README and porting.toml only with evidence-backed status.
+
+### Current application
+
+- Freeze completed archive/build gates; do not repeat archive-01 through archive-18, ABI audits or setup unless new evidence points to them.
+- For linker/runtime failures, inspect the real declaration, relocation/binding and final artifact. A source null check does not neutralise an invalid linker relocation.
+- Verify actual artifacts/logs; never infer success from expected paths or workflow summaries.
+- Read the official UniXNU documentation for the current stage and label undocumented behavior as a hypothesis.
+- Never claim an edit, build or boot succeeded without GitHub/CI/device readback.
