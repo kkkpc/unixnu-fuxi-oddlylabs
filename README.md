@@ -1,5 +1,7 @@
 # unixnu-fuxi：小米 13（fuxi）的 UniXNU 设备仓库
 
+**语言 / Language：** [中文版](#中文版) | [English](#english)
+
 [![Build](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml/badge.svg)](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml)
 [![Device documentation](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/porting-record.yml/badge.svg)](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/porting-record.yml)
 
