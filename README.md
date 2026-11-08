@@ -148,3 +148,25 @@ cd drivers/FuxiFtsTouch && for t in fts-protocol touch-core; do gcc -std=c11 -Wa
 ## 许可证
 
 BSD-2-Clause-Patent，见 [LICENSE](LICENSE)。
+
+## Fast bring-up and iteration policy
+
+The project optimises for the next verified boot milestone, not for completing every subsystem. Use the OnePlus 13T port's demonstrated workflow: preserve a known-good baseline, change one blocking variable at a time, make failures observable, and return a new testable image quickly.
+
+1. **Keep the baseline immutable.** Reuse already-verified kernel inputs, firmware, ADT, trust cache, Data seed and packaging wherever compatible. Record exact commit/revision and hashes. Do not rebuild or reopen passed stages without evidence that the current failure implicates them.
+2. **Work backwards from the next user-visible milestone.** The first hard userland milestone is `launchd` running; then verify Data/services; then SpringBoard/display. Do not block userland validation on Wi-Fi, audio, GPU acceleration or unrelated peripherals. State the exact acceptance signal for each milestone.
+3. **Diagnose before changing code.** Identify the earliest unverified transition and capture the smallest decisive evidence (checkpoint, return code, symbol/PC, register, mount/UUID, service exit reason). Prefer persistent or screen-visible diagnostics that survive the next reboot. Distinguish documented facts, host-verified facts, device observations and hypotheses.
+4. **One root cause / one controlled change per iteration.** Reproduce the old failure in a focused host regression where practical, prove the corrected case, and avoid bundling speculative cleanups. If a candidate regresses a known-good milestone, revert that change rather than layering workarounds on top.
+5. **Use the shortest complete validation loop.** Run focused host tests → exact ABI/type checks → real ARM64 compile/link → artifact and input-pairing/readback checks → produce a uniquely identified candidate → obtain owner approval before any device boot. Device tests use temporary boot only; never flash or write partitions without separate explicit approval.
+6. **Make every CI run useful.** Preserve full build logs and reports, including failure paths. Collect status/report artifacts even when the main build command fails; do not let shell `errexit` hide post-failure diagnostics. Keep artifact collection limits from silently excluding large logs.
+7. **Stop when the milestone is reached.** Once `launchd` is confirmed, do not keep debugging kernel bring-up unless new evidence requires it. Once SpringBoard is reached, isolate display/user-space issues without reopening completed storage, trust or boot-chain work.
+8. **Close the loop in the repository.** For each iteration record the changed variable, source revision, commands, test results, exact image/input identities, last confirmed boot stage, device observation and next single blocker. Update the affected porting-record area and README only with evidence-backed status.
+
+### Current execution discipline
+
+- The current project objective is the shortest evidence-backed path to a real userland/UI milestone, not broad driver completeness.
+- Keep completed archive/build gates frozen. Do not repeat successful archive gates, ABI audits or setup work unless a new error points directly to them.
+- For a linker or runtime failure, inspect the exact declaration, generated relocation/binding and linked artifact before proposing a source-level workaround. A source null check does not make an invalid relocation safe.
+- Never infer success from a generated file's expected path or a workflow summary. Fetch the actual artifact/log and verify it.
+- Follow the official UniXNU documentation for the current stage before relying on assumptions; explicitly label anything the docs do not specify.
+- Do not claim a build, boot, code change or device result until the corresponding GitHub/CI/device evidence has been read back and verified.
