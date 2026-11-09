@@ -36,12 +36,23 @@ def require(condition, message):
 
 
 def prelink_spec():
-    for profile in sorted((ROOT / "profiles/os").glob("*/profile.toml")):
-        with profile.open("rb") as stream:
-            data = tomllib.load(stream)
-        spec = data.get("kernel", {}).get("prelink")
-        if spec and (ROOT / spec.get("kernel", "")).is_file():
-            return spec
+    # In CI, ROOT is the assembled out/.../tree.  profiles/ belongs to the
+    # UniXNU source checkout above it and is intentionally not copied into
+    # the assembled tree.
+    profile_roots = [ROOT / "profiles/os"]
+    profile_roots.extend(parent / "profiles/os" for parent in ROOT.parents)
+    seen = set()
+    for profile_root in profile_roots:
+        if profile_root in seen or not profile_root.is_dir():
+            continue
+        seen.add(profile_root)
+        for profile in sorted(profile_root.glob("*/profile.toml")):
+            with profile.open("rb") as stream:
+                data = tomllib.load(stream)
+            spec = data.get("kernel", {}).get("prelink")
+            base = profile_root.parent.parent
+            if spec and (base / spec.get("kernel", "")).is_file():
+                return base, spec
     raise SystemExit("no profile-pinned kernel.prelink spec matches the bootstrap kernel")
 
 
@@ -82,12 +93,12 @@ def original_kernelcache():
 
 
 def main():
-    spec = prelink_spec()
-    kernel = ROOT / spec["kernel"]
+    profile_root, spec = prelink_spec()
+    kernel = profile_root / spec["kernel"]
     cache = original_kernelcache()
     require(sha256(cache) == EXPECTED_KERNELCACHE, "wrong original kernelcache for the ABI audit")
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    tool = ROOT / spec["tool"]
+    tool = profile_root / spec["tool"]
     command = [sys.executable, str(tool), "--kernel", str(kernel), "--prelinked", str(cache),
                f"--slide={spec['slide']}"]
     for root in spec.get("roots", []):
