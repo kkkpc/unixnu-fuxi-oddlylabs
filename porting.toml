@@ -34,13 +34,14 @@ paths = ["scripts/patch-adreno-host-fixture.py", ".github/workflows/build.yml"]
 inputs = ["Pinned UniXNU Adreno740 host simulation fixture and NativeAdrenoSubmit.cpp"]
 configuration = ["The GPU userspace job applies the board-owned host adaptation after the pinned UniXNU tree is resolved and before Turnip host compilation."]
 procedure = ["python3 scripts/patch-adreno-host-fixture.py --tree <resolved UniXNU tree>", "python3 <resolved UniXNU tree>/scripts/build-turnip-darwin.py --target host"]
-findings = ["Build 42660761067 stopped at NativeAdrenoSubmit.cpp:155-156 because the pinned host fixture provided IOMallocZero but no IOFree. The adaptation adds only the matching host-side free double, preserves the production XNU source unchanged, and fails closed if the fixture anchor changes."]
-completion = ["The pinned NativeAdrenoSubmit host sources compile with the fixture's allocation and release paths represented."]
+findings = ["Build 42660761067 stopped at NativeAdrenoSubmit.cpp:155-156 because the pinned host fixture provided IOMallocZero but no IOFree. The adaptation adds only the matching host-side free double, preserves the production XNU source unchanged, and fails closed if the fixture anchor changes.", "Build 42667331699 then passed the host and iOS Turnip builds and stopped when NativeAdrenoUserClient.cpp included sys/resource_private.h, which is an XNU-private header absent from the macOS host SDK. The same adaptation publishes a host-only subset containing PRIO_DARWIN_GPU_BACKGROUND=8 and PRIO_DARWIN_GPU_UTILITY=9, exactly matching package/FuxiGpuRole.h and patches/xnu/fuxi-gpu-role.patch; the host fixture supplies current_task and the neutral role 0 that the fuxi production shim documents for this port. Both adaptations fail closed on conflicting source anchors or headers."]
+completion = ["The pinned NativeAdrenoSubmit and NativeAdrenoUserClient host sources compile with the fixture's allocation/release paths and the board's recorded GPU-role values represented."]
 limits = ["This is host simulation coverage only; it does not change device-side allocator or GPU runtime behavior."]
 next_action = ["Re-run the serial GPU userspace and payload build."]
 evidence = [
   { kind = "host", command = "python3 scripts/patch-adreno-host-fixture.py --tree <resolved UniXNU tree>", revision = "6b55da706c4ff6d1db87b618925a1dd38766b79a", reference = "scripts/patch-adreno-host-fixture.py", result = "The pinned fixture gains an idempotent IOFree host double and refuses an unexpected source anchor." },
   { kind = "host", command = "CI Build run 42660761067", revision = "7d26e84aad0d35845900f2abbfdea4666598ada8", reference = "https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/runs/42660761067", result = "The first GPU userspace failure was NativeAdrenoSubmit.cpp:155-156: IOFree undeclared in the host compile." },
+  { kind = "host", command = "CI Build run 42667331699", revision = "6b55da706c4ff6d1db87b618925a1dd38766b79a", reference = "https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/runs/42667331699", result = "Host and iOS Turnip passed; NativeAdrenoUserClient.cpp then failed because the host SDK has no sys/resource_private.h." },
 ]
 
 [[area]]
