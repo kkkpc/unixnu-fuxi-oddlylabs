@@ -42,17 +42,24 @@ record = json.loads((ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/iokit/D
 source = ROOT / 'drivers/Adreno740/NativeAdrenoAccelerator.cpp'
 # The fuxi base is pinned before Adreno740's include was renamed from
 # ../NativeMetal to ../AdrenoMetal.  The component catalog declares NativeMetal
-# as AdrenoMetal's legacy name, but a clean assembled tree can reach this
-# archive before that directory alias is materialized.  Preserve the pinned
-# accelerator source byte-for-byte and make its old relative include resolve
-# only to the canonical, hash-qualified ABI header.
+# as AdrenoMetal's legacy name.  Driver modules are linked into the assembled
+# tree, however, and clang resolves this quoted include from the real Adreno740
+# checkout rather than from that link.  Preserve the pinned accelerator source
+# byte-for-byte in a private archive staging directory, where its old relative
+# include resolves only to the canonical, hash-qualified ABI header.
 canonical_abi = ROOT / 'drivers/AdrenoMetal/OriginalAcceleratorABI.h'
-legacy_metal = ROOT / 'drivers/NativeMetal'
+staging = OUT / 'source'
+staged_source = staging / 'Adreno740/NativeAdrenoAccelerator.cpp'
+legacy_metal = staging / 'NativeMetal'
 expected_abi_sha256 = '211e922f9b760ddec2e3453db6584bac57597b3d39e4bf0d013c1b2debd53365'
 if not canonical_abi.is_file():
     sys.exit('Missing canonical AdrenoMetal accelerator ABI header: ' + str(canonical_abi))
 if sha(canonical_abi) != expected_abi_sha256:
     sys.exit('Refuse unqualified AdrenoMetal accelerator ABI header: ' + str(canonical_abi))
+staged_source.parent.mkdir(parents=True, exist_ok=True)
+staged_source.write_bytes(source.read_bytes())
+if sha(staged_source) != sha(source):
+    sys.exit('Staged accelerator source differs from the pinned driver source')
 if legacy_metal.exists() or legacy_metal.is_symlink():
     if not legacy_metal.is_symlink() or legacy_metal.resolve() != canonical_abi.parent.resolve():
         sys.exit('Refuse NativeMetal compatibility path not linked to canonical AdrenoMetal: ' + str(legacy_metal))
@@ -66,7 +73,7 @@ cmd, i, args = [], 0, record['arguments']
 while i < len(args):
     v = args[i]
     if v == record['file']:
-        cmd.append(str(source))
+        cmd.append(str(staged_source))
     elif v == '-o':
         cmd += ['-o', str(obj)]
         i += 1
@@ -124,7 +131,8 @@ native = ROOT / 'build/native-adreno/libNativeAdreno.a'
 if native.exists():
     run(['xcrun', 'ar', 'rcs', native, late, OUT / 'original-bindings.o'])
 (OUT / 'build-report.json').write_text(json.dumps(dict(
-    source_sha256={str(p.relative_to(ROOT)): sha(p) for p in (source, canonical_abi, legacy_abi)},
+    source_sha256={str(p.relative_to(ROOT)): sha(p) for p in (source, canonical_abi)},
+    staged_source_sha256=sha(staged_source),
     accelerator_abi_compatibility=dict(legacy_path=str(legacy_metal.relative_to(ROOT)),
                                        canonical_path=str(canonical_abi.parent.relative_to(ROOT)),
                                        sha256=expected_abi_sha256),
