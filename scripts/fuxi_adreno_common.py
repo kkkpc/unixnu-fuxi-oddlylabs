@@ -7,6 +7,8 @@ import os
 import subprocess
 import sys
 import urllib.request
+import urllib.error
+import time
 from pathlib import Path
 
 
@@ -120,15 +122,33 @@ def ensure_fuxi_firmware(root, local, files):
             blob = path.read_bytes()
         else:
             url = expected['repository'].replace('https://github.com/', 'https://api.github.com/repos/') + '/git/blobs/' + expected['git_blob_sha1']
-            request = urllib.request.Request(url, headers={
+            token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
+            headers = {
                 'User-Agent': 'fuxi-offline-adreno-audit',
                 'Accept': 'application/vnd.github.raw+json',
-            })
-            with urllib.request.urlopen(request, timeout=30) as response:
-                blob = response.read()
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(blob)
+            }
+            if token:
+                headers['Authorization'] = 'Bearer ' + token
+            for attempt in range(5):
+                try:
+                    request = urllib.request.Request(url, headers=headers)
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        blob = response.read()
+                    break
+                except urllib.error.HTTPError as error:
+                    retryable = error.code in (403, 429) or error.code >= 500
+                    if not retryable or attempt == 4:
+                        if error.code == 403 and not token:
+                            raise RuntimeError('GITHUB_TOKEN required for pinned fuxi firmware blob request') from error
+                        raise
+                    retry_after = error.headers.get('Retry-After')
+                    delay = min(30, int(retry_after) if retry_after and retry_after.isdigit() else 2 ** attempt)
+                    time.sleep(delay)
+            # Never cache a response before verifying all three pinned identities.
         if (len(blob) != expected['bytes'] or
                 hashlib.sha256(blob).hexdigest() != expected['sha256'] or
                 hashlib.sha1(b'blob ' + str(len(blob)).encode() + b'\0' + blob).hexdigest() != expected['git_blob_sha1']):
             raise SystemExit('pinned fuxi firmware differs: ' + key)
+        if not path.is_file():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(blob)
