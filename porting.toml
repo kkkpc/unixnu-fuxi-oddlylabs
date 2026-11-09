@@ -38,7 +38,10 @@ findings = ["Build 42660761067 stopped at NativeAdrenoSubmit.cpp:155-156 because
 completion = ["The pinned NativeAdrenoSubmit host sources compile with the fixture's allocation and release paths represented."]
 limits = ["This is host simulation coverage only; it does not change device-side allocator or GPU runtime behavior."]
 next_action = ["Re-run the serial GPU userspace and payload build."]
-evidence = []
+evidence = [
+  { kind = "host", command = "python3 scripts/patch-adreno-host-fixture.py --tree <resolved UniXNU tree>", revision = "6b55da706c4ff6d1db87b618925a1dd38766b79a", reference = "scripts/patch-adreno-host-fixture.py", result = "The pinned fixture gains an idempotent IOFree host double and refuses an unexpected source anchor." },
+  { kind = "host", command = "CI Build run 42660761067", revision = "7d26e84aad0d35845900f2abbfdea4666598ada8", reference = "https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/runs/42660761067", result = "The first GPU userspace failure was NativeAdrenoSubmit.cpp:155-156: IOFree undeclared in the host compile." },
+]
 
 [[area]]
 id = "firmware"
