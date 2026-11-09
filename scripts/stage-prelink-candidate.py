@@ -114,7 +114,9 @@ def ensure_native_kernel(kernel):
     environment = dict(os.environ)
     environment.update({
         "XNU_BOOTSTRAP": "0",
-        "XNU_BOOT_PROGRESS": "0",
+        # ShengUfs calls boot_progress_poll(); the baseline only builds and
+        # force-loads libBootProgress.a when boot progress is enabled.
+        "XNU_BOOT_PROGRESS": "1",
         "XNU_NATIVE_ADRENO": "0",
         "XNU_NATIVE_MOBILE_DISPLAY": "0",
         "XNU_NATIVE_LEGACY_DISPLAY": "0",
