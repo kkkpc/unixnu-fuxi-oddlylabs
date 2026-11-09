@@ -71,6 +71,7 @@ jobs:
           python3 -m py_compile scripts/*.py ci/*.py
           bash -n ci/decrypt-boot-image.sh
           python3 ci/check-fuxi-boot-contract.py
+          python3 scripts/check-fuxi-gpu-payload.py
 
   apple-clang:
     name: Kernel-target compile (Xcode clang)
@@ -182,7 +183,7 @@ jobs:
       - name: Install host tools
         run: |
           # The set UniXNU's macos.yml installs, and OpenSSL 3 for the encryption step (the system openssl is LibreSSL).
-          brew install llvm lld mtools dtc openssl@3
+          brew install llvm lld mtools dtc openssl@3 ninja glslang shaderc spirv-tools bison flex pkg-config
           if ! command -v unifdef >/dev/null; then
             brew install unifdef
             echo "$(brew --prefix unifdef)/bin" >> "$GITHUB_PATH"
@@ -256,6 +257,29 @@ jobs:
         run: |
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/build-fuxi-system-trust.py" \
             --out "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle"
+      - name: Build Adreno Metal userspace addon
+        run: |
+          tree=$(find "$GITHUB_WORKSPACE/unixnu/out" -type f -path '*/tree/scripts/build-turnip-darwin.py' -print -quit | sed 's#/scripts/build-turnip-darwin.py##')
+          [ -n "$tree" ] && [ -d "$tree" ] || { echo "::error::resolved UniXNU tree not found"; exit 1; }
+          echo "UNIXNU_RESOLVED_TREE=$tree" >> "$GITHUB_ENV"
+          export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$HOME/.cargo/bin:$PATH"
+          command -v rustup >/dev/null || { echo "::error::rustup is required for the pinned Metal bridge"; exit 1; }
+          rustup toolchain install 1.98.0 --profile minimal
+          rustup target add aarch64-apple-ios --toolchain 1.98.0
+          python3 "$GITHUB_WORKSPACE/fuxi/scripts/prepare-fuxi-metal-userspace.py" --tree "$tree"
+          python3 "$tree/scripts/build-turnip-darwin.py" --target host
+          python3 "$tree/scripts/build-turnip-darwin.py" --target ios
+          python3 "$tree/scripts/build-adreno-metal-plugin.py"
+          mkdir -p "$tree/build/original-static-system-trust"
+          cp "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle" \
+            "$tree/build/original-static-system-trust/original-static-system.bundle"
+          python3 "$tree/scripts/make-owner-trust-bundle.py"
+          mkdir -p "$GITHUB_WORKSPACE/fuxi/build"
+          python3 "$GITHUB_WORKSPACE/fuxi/scripts/make-fuxi-gpu-addon.py" --tree "$tree" \
+            "$GITHUB_WORKSPACE/fuxi/build/gpuaddon.bin"
+          python3 "$GITHUB_WORKSPACE/fuxi/scripts/check-fuxi-gpu-payload.py" \
+            --addon "$GITHUB_WORKSPACE/fuxi/build/gpuaddon.bin" \
+            --owner-trust "$tree/build/adreno-metal-plugin/owner-trust.bundle"
       # The seed comes from the data-seed job: it is formatted on macOS 15 (the macOS 14 hosted
       # images were retired on 2026-11-02, before that job ever ran) and packed there into the
       # DBRDISK1 extent form. The dense form does not boot on this unit: chain47/48/49 and the
@@ -270,8 +294,14 @@ jobs:
         working-directory: unixnu
         run: |
           ./unixnu build payload --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --unique-chip-id "$BRINGUP_SEED" \
-            --trust-cache "$GITHUB_WORKSPACE/fuxi/build/system-trust/original-static-system.bundle" \
+            --owner-trust-cache "$UNIXNU_RESOLVED_TREE/build/adreno-metal-plugin/owner-trust.bundle" \
+            --gpu-addon "$GITHUB_WORKSPACE/fuxi/build/gpuaddon.bin" \
             --data-ramdisk "$GITHUB_WORKSPACE/fuxi/build/data-seed/owner-data-grown.dbr"
+          report=$(find "$GITHUB_WORKSPACE/unixnu/out" -path '*/payload/payload.json' -print -quit)
+          python3 "$GITHUB_WORKSPACE/fuxi/scripts/check-fuxi-gpu-payload.py" \
+            --addon "$GITHUB_WORKSPACE/fuxi/build/gpuaddon.bin" \
+            --owner-trust "$UNIXNU_RESOLVED_TREE/build/adreno-metal-plugin/owner-trust.bundle" \
+            --payload-report "$report"
       - name: Build firmware
         working-directory: unixnu
         # DEBUG: the firmware prints its log on the panel, the only console before the touch report.
