@@ -71,6 +71,7 @@ archives = [
   "build-fuxi-touch.py",
   "build-fuxi-usb-debug.py",
   "stage-prelink-candidate.py",
+  "seed-mobile-graphics-legacy-audit.py",
   "audit-mobile-graphics-legacy.py",
   "build-fuxi-display.py",
   "prepare-fuxi-gmu.py --dtb ../../../../../../uefi-fuxi/Platforms/Xiaomi/fuxiPkg/FdtBlob/sm8550-xiaomi-fuxi.dtb",

@@ -19,6 +19,7 @@ completion = ["All source pins resolve; every selected component has a record; s
 limits = ["The GitHub App cannot write workflow files (.github/workflows/*); workflow changes go through the GitHub web editor as separate commits, and a commit that changes build.yml must carry its configuration finding in the same commit, because the record checker validates only that commit's own diff."]
 next_action = ["Persistent Data phase A: wire the vendored seed grower into the data-seed job and host-verify the grown seed (213 GiB container); then phase B adds sheng-data-persist=1 to kernel_args for a read-only proof boot, and phase C opens writes with sheng-data-persist=2 under its own owner approval. The stage order (persistent Data, then functional UI/display, then firmware enrollment) and its reasoning are recorded in Issue #1 (comment 6679165278)."]
 evidence = [
+  { kind = "source", reference = "board.toml", result = "The kernel archive order seeds the qualified 21H461 Legacy graphics ABI before the mobile-graphics audit and display archive." },
   { kind = "source", reference = "board.toml", result = "Board selection and archive order" },
   { kind = "host", command = "./unixnu defconfig fuxi_defconfig; ./unixnu build kernel", revision = "8b4c03f69fc15878d7ee92c0f157215fa235d78d", reference = "https://github.com/OddlyLabs/unixnu-fuxi/actions/runs/41261795785", result = "All sources resolved, 62 patches applied, nine archives built, kernel linked and prelinked" },
 ]
@@ -109,7 +110,7 @@ evidence = [
 id = "display"
 status = "planned"
 components = ["GopFramebuffer"]
-paths = ["include/FuxiPanel*", "package/*Display*", "package/*Framebuffer*", "package/*Backlight*", "package/*Panel*", "scripts/*display*", "scripts/*gop*", "scripts/*framebuffer*", "facts/panel_*"]
+paths = ["include/FuxiPanel*", "package/*Display*", "package/*Framebuffer*", "package/*Backlight*", "package/*Panel*", "scripts/*display*", "scripts/*graphics*", "scripts/*gop*", "scripts/*framebuffer*", "facts/panel_*"]
 inputs = ["Panel xiaomi m3 38 0c 0a (Samsung DDIC by its command set), 1080x2400, DSI0 command mode with DSC 8 bpp, slices 540x40, 1.1 GHz.", "Splash framebuffer 0xb8000000 (0x2b00000), 32 bpp, stride 1080 pixels, the same region as sheng."]
 configuration = ["package/FuxiPanelBoard.h holds the panel and controller constants with their sources; no display component is selected."]
 procedure = ["First stage: keep the firmware framebuffer (GopFramebuffer route), as sheng does."]
@@ -118,6 +119,7 @@ completion = ["A known frame appears with correct geometry and colors, then user
 limits = ["No device evidence for display."]
 next_action = ["Read the framebuffer the firmware publishes on fuxi (address, stride, format)."]
 evidence = [
+  { kind = "source", reference = "scripts/fuxi-21H461-mobile-graphics-legacy-abi.json", result = "Qualified 21H461 Legacy framebuffer ABI baseline used to seed the runtime audit on clean CI trees." },
   { kind = "source", reference = "fuxi_touch_panel_porting.md", result = "Panel facts with sources (section 3)" },
 ]
 
