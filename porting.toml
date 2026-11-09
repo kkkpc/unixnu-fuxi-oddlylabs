@@ -27,6 +27,20 @@ evidence = [
 ]
 
 [[area]]
+id = "gpu-host-build"
+status = "implemented"
+components = ["Adreno740"]
+paths = ["scripts/patch-adreno-host-fixture.py", ".github/workflows/build.yml"]
+inputs = ["Pinned UniXNU Adreno740 host simulation fixture and NativeAdrenoSubmit.cpp"]
+configuration = ["The GPU userspace job applies the board-owned host adaptation after the pinned UniXNU tree is resolved and before Turnip host compilation."]
+procedure = ["python3 scripts/patch-adreno-host-fixture.py --tree <resolved UniXNU tree>", "python3 <resolved UniXNU tree>/scripts/build-turnip-darwin.py --target host"]
+findings = ["Build 42660761067 stopped at NativeAdrenoSubmit.cpp:155-156 because the pinned host fixture provided IOMallocZero but no IOFree. The adaptation adds only the matching host-side free double, preserves the production XNU source unchanged, and fails closed if the fixture anchor changes."]
+completion = ["The pinned NativeAdrenoSubmit host sources compile with the fixture's allocation and release paths represented."]
+limits = ["This is host simulation coverage only; it does not change device-side allocator or GPU runtime behavior."]
+next_action = ["Re-run the serial GPU userspace and payload build."]
+evidence = []
+
+[[area]]
 id = "firmware"
 status = "host-verified"
 components = ["DarwinBoot"]
