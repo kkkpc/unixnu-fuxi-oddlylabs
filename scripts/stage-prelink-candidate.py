@@ -93,9 +93,37 @@ def original_kernelcache():
     raise SystemExit("fetched KernelCache does not match the pinned 21H461 sha256")
 
 
+def ensure_native_kernel(kernel):
+    if kernel.is_file():
+        return
+    # The first XNU pass is intentionally allowed to fail after leaving
+    # compile records.  At archive-19 the storage, PMGR and USB archives are
+    # now available, so make the native kernel once with those real inputs.
+    # Display and Adreno archives are later in board.toml and are explicitly
+    # disabled for this prelink carrier; the final build relinks with them.
+    script = ROOT / "scripts/build-xnu-4k-baseline.sh"
+    require(script.is_file(), f"XNU build script missing: {script}")
+    environment = dict(os.environ)
+    environment.update({
+        "XNU_BOOTSTRAP": "0",
+        "XNU_BOOT_PROGRESS": "0",
+        "XNU_NATIVE_ADRENO": "0",
+        "XNU_NATIVE_MOBILE_DISPLAY": "0",
+        "XNU_NATIVE_LEGACY_DISPLAY": "0",
+    })
+    result = subprocess.run(["bash", str(script)], cwd=ROOT, env=environment,
+                            text=True, capture_output=True, timeout=900)
+    if result.returncode:
+        sys.stdout.write(result.stdout)
+        sys.stderr.write(result.stderr)
+        raise SystemExit("prelink carrier native relink failed")
+    require(kernel.is_file(), f"native relink emitted no kernel: {kernel}")
+
+
 def main():
     tree_root, spec = prelink_spec()
     kernel = tree_root / spec["kernel"]
+    ensure_native_kernel(kernel)
     cache = original_kernelcache()
     require(sha256(cache) == EXPECTED_KERNELCACHE, "wrong original kernelcache for the ABI audit")
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
