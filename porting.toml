@@ -108,7 +108,7 @@ evidence = [
 [[area]]
 id = "display"
 status = "planned"
-components = []
+components = ["GopFramebuffer"]
 paths = ["include/FuxiPanel*", "package/*Display*", "package/*Framebuffer*", "package/*Backlight*", "package/*Panel*", "scripts/*display*", "scripts/*gop*", "scripts/*framebuffer*", "facts/panel_*"]
 inputs = ["Panel xiaomi m3 38 0c 0a (Samsung DDIC by its command set), 1080x2400, DSI0 command mode with DSC 8 bpp, slices 540x40, 1.1 GHz.", "Splash framebuffer 0xb8000000 (0x2b00000), 32 bpp, stride 1080 pixels, the same region as sheng."]
 configuration = ["package/FuxiPanelBoard.h holds the panel and controller constants with their sources; no display component is selected."]
@@ -158,7 +158,7 @@ evidence = [
 [[area]]
 id = "gpu"
 status = "planned"
-components = []
+components = ["Adreno740", "AdrenoMetal", "AdrenoPM4", "AdrenoFirmware", "ArmSmmu4K", "Sm8550Platform"]
 paths = ["package/*Gpu*", "package/*Gmu*", "package/*Adreno*", "scripts/*adreno*", "scripts/*gpu*", "scripts/*metal*"]
 inputs = ["Adreno 740 of SM8550, the same GPU as sheng."]
 configuration = ["CONFIG_XNU_NATIVE_ADRENO is not set."]
