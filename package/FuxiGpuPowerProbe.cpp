@@ -62,17 +62,7 @@ extern "C" {
 
 #include "NativeAdrenoGmuContext.h"
 #include "NativeAdrenoGpuContext.h"
-#include "NativeAdrenoPublishPolicy.h"
 #include "NativeAdrenoRing.h"
-
-/* What this board asks the published client for, as data: every user connection shares the kernel address space
- * (this command processor cannot switch TTBR0 in the ring) and submissions go out unframed (its prologue's packets
- * stop it). Both are transition states; docs/upstream-clean-gpu-plan.md has the order they are retired in. */
-static const NativeAdrenoPublishPolicy gGpuPublishPolicy = {
-    1, sizeof(NativeAdrenoPublishPolicy),
-    /* Phase C: every flag withdrawn in turn. 0 is the default path — per-process page tables and framed
-     * submissions — which is what docs/upstream-clean-gpu-plan.md aims at. */
-    0, 0};
 #include "NativeAdrenoMemory.h"
 #include "NativeAdrenoVm.h"
 #include "NativeAdrenoUserClient.h"
@@ -102,8 +92,6 @@ extern "C" IOReturn NativeAdrenoGpuContextBringup(volatile uint8_t *, size_t, un
     unsigned, void (*)(uint32_t), NativeAdrenoGmuContextReport *) __attribute__((weak));
 extern "C" IOReturn NativeAdrenoGpuContextBuffers(NativeAdrenoGpuBuffer out[5]) __attribute__((weak));
 extern "C" NativeAdrenoVm *NativeAdrenoGpuContextVm() __attribute__((weak));
-extern "C" IOReturn native_adreno_publish_with_policy(NativeAdrenoVm *, NativeAdrenoSubmit *, NativeAdrenoRing *, const NativeAdrenoRingClock *,
-    const NativeAdrenoTimer *, const NativeAdrenoAbiDeviceInfo *, const NativeAdrenoPublishPolicy *, uint32_t, uint32_t);
 extern "C" IOReturn native_adreno_publish(NativeAdrenoVm *, NativeAdrenoSubmit *, NativeAdrenoRing *, const NativeAdrenoRingClock *,
     const NativeAdrenoTimer *, const NativeAdrenoAbiDeviceInfo *, uint32_t, uint32_t) __attribute__((weak));
 extern "C" uint32_t native_adreno_publish_stats(uint32_t *) __attribute__((weak));
@@ -1356,8 +1344,8 @@ void publishAndWrapperTest(bool rounds) {
     // zero window with kIOReturnNoResources, so a hardcoded 32 left every Metal client unable to mount.
     const unsigned ias = NativeAdrenoGpuContextInputBits ? NativeAdrenoGpuContextInputBits() : 0;
     gDeviceInfo.va_size = ias > 32 ? (1ull << ias) - GpuClientVaStart : 0;
-    const IOReturn published = native_adreno_publish_with_policy(vm, &gSubmit, &gRing, &clock, timer ? nullptr : &gTimer,
-        &gDeviceInfo, &gGpuPublishPolicy, ias, 40);
+    const IOReturn published = native_adreno_publish(vm, &gSubmit, &gRing, &clock, timer ? nullptr : &gTimer,
+        &gDeviceInfo, ias, 40);
     IOService *svc = published ? nullptr : native_adreno_published_service();
     int ok = 0, n = 0, errAt = -1, v1 = -1, v2 = -1;
     IOReturn err = 0;
