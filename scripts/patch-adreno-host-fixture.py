@@ -68,3 +68,44 @@ elif service_needle in service_text:
     print("PASS: exported the host service's monotonic diagnostic clock")
 else:
     raise SystemExit("Adreno host service changed: diagnostic-clock anchor is absent")
+
+
+# The owner asked to skip host smoke tests in the bring-up CI. gen-turnip-replay.py
+# still needs the checker's build products (libhostiokit.dylib + plugin_smoke), so
+# retain only that fixture construction and return before the validation suite.
+checker_text = checker.read_text()
+smoke_compile = """smoke = out / 'vulkan_smoke'
+subprocess.run(['xcrun', 'clang', '-std=c11', '-O1', '-I', '/opt/homebrew/include', sim / 'vulkan_smoke.c', '-o', smoke,
+                '-Wl,-rpath,' + str(out)], check=True)
+
+"""
+if "smoke = out / 'vulkan_smoke'" in checker_text:
+    if smoke_compile not in checker_text:
+        raise SystemExit("Turnip host checker changed: Vulkan smoke compile block anchor is absent")
+    checker_text = checker_text.replace(
+        smoke_compile,
+        "# fuxi bring-up CI: skip the standalone Vulkan smoke binary; replay needs only plugin_smoke.\n",
+        1,
+    )
+
+fixture_exit_anchor = """subprocess.run(['xcrun', 'clang++', '-std=c++17', '-O1', '-I', ROOT / 'drivers/AdrenoMetal', '-I', ROOT / '.cache/mesa-work/include',
+                '-I', ROOT / 'build/turnip-smoke',
+                sim / 'plugin_smoke.cpp', '-o', plugin_smoke], check=True)
+env = dict(os.environ, DYLD_INSERT_LIBRARIES=str(shim), MESA_LOG='')
+"""
+fixture_exit_replacement = """subprocess.run(['xcrun', 'clang++', '-std=c++17', '-O1', '-I', ROOT / 'drivers/AdrenoMetal', '-I', ROOT / '.cache/mesa-work/include',
+                '-I', ROOT / 'build/turnip-smoke',
+                sim / 'plugin_smoke.cpp', '-o', plugin_smoke], check=True)
+print('PASS: built Turnip replay fixture; fuxi bring-up CI skips host smoke tests')
+sys.exit(0)
+env = dict(os.environ, DYLD_INSERT_LIBRARIES=str(shim), MESA_LOG='')
+"""
+if "fuxi bring-up CI skips host smoke tests" in checker_text:
+    print("PASS: Turnip host checker already skips validation smoke tests")
+elif fixture_exit_anchor in checker_text:
+    checker_text = checker_text.replace(fixture_exit_anchor, fixture_exit_replacement, 1)
+    print("PASS: Turnip host checker reduced to replay-fixture build; smoke tests skipped")
+else:
+    raise SystemExit("Turnip host checker changed: replay-fixture exit anchor is absent")
+
+checker.write_text(checker_text)
