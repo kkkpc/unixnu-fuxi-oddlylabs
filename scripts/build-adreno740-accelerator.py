@@ -40,6 +40,27 @@ if plan['operational_overrides'] or plan['instance_bytes'] != 136 or plan['virtu
 
 record = json.loads((ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/iokit/DEVELOPMENT/IOPlatformExpert.cpo.json').read_text().strip().rstrip(','))
 source = ROOT / 'drivers/Adreno740/NativeAdrenoAccelerator.cpp'
+# The fuxi base is pinned before Adreno740's include was renamed from
+# ../NativeMetal to ../AdrenoMetal.  The component catalog declares NativeMetal
+# as AdrenoMetal's legacy name, but a clean assembled tree can reach this
+# archive before that directory alias is materialized.  Preserve the pinned
+# accelerator source byte-for-byte and make its old relative include resolve
+# only to the canonical, hash-qualified ABI header.
+canonical_abi = ROOT / 'drivers/AdrenoMetal/OriginalAcceleratorABI.h'
+legacy_metal = ROOT / 'drivers/NativeMetal'
+expected_abi_sha256 = '211e922f9b760ddec2e3453db6584bac57597b3d39e4bf0d013c1b2debd53365'
+if not canonical_abi.is_file():
+    sys.exit('Missing canonical AdrenoMetal accelerator ABI header: ' + str(canonical_abi))
+if sha(canonical_abi) != expected_abi_sha256:
+    sys.exit('Refuse unqualified AdrenoMetal accelerator ABI header: ' + str(canonical_abi))
+if legacy_metal.exists() or legacy_metal.is_symlink():
+    if not legacy_metal.is_symlink() or legacy_metal.resolve() != canonical_abi.parent.resolve():
+        sys.exit('Refuse NativeMetal compatibility path not linked to canonical AdrenoMetal: ' + str(legacy_metal))
+else:
+    legacy_metal.symlink_to(canonical_abi.parent, target_is_directory=True)
+legacy_abi = legacy_metal / 'OriginalAcceleratorABI.h'
+if not legacy_abi.is_file() or sha(legacy_abi) != expected_abi_sha256:
+    sys.exit('NativeMetal compatibility path does not resolve to the qualified AdrenoMetal ABI')
 obj = OUT / 'NativeAdrenoAccelerator.o'
 cmd, i, args = [], 0, record['arguments']
 while i < len(args):
@@ -103,7 +124,10 @@ native = ROOT / 'build/native-adreno/libNativeAdreno.a'
 if native.exists():
     run(['xcrun', 'ar', 'rcs', native, late, OUT / 'original-bindings.o'])
 (OUT / 'build-report.json').write_text(json.dumps(dict(
-    source_sha256={str(p.relative_to(ROOT)): sha(p) for p in (source, ROOT / 'drivers/NativeMetal/OriginalAcceleratorABI.h')},
+    source_sha256={str(p.relative_to(ROOT)): sha(p) for p in (source, canonical_abi, legacy_abi)},
+    accelerator_abi_compatibility=dict(legacy_path=str(legacy_metal.relative_to(ROOT)),
+                                       canonical_path=str(canonical_abi.parent.relative_to(ROOT)),
+                                       sha256=expected_abi_sha256),
     archive_sha256=sha(archive), original_abi_sha256=sha(plan_path), bindings={n: hex(a) for n, a in bindings.items()},
     original_instructions_modified=False, runtime_qualified=False), indent=2) + '\n')
 print('PASS: staged AGXAccelerator builds against the audited original IOAcceleratorES imports')
