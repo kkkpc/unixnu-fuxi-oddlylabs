@@ -996,7 +996,7 @@ NativeAdrenoTimer gTimer;
 // (0x1000000..0x12fffff) and ends at the 4 GiB aperture.
 NativeAdrenoAbiDeviceInfo gDeviceInfo = {0x43050a01u, 3u << 20, 0x1000000ull, 0x1fffffffff000ull, GpuClientVaStart,
                                                0xE0000000ull, 16, 6, 1, 4,
-        NativeAdrenoDeviceClientIova | NativeAdrenoDeviceSingleRenderThread, 0};
+        NativeAdrenoDeviceClientIova, 0};
 int timerRead(void *, uint32_t reg, uint32_t *value) {*value = gpuRd(reg); return 0;}
 const NativeAdrenoTimeIo gTimerIo{nullptr, timerRead};
 IOReturn wcall(IOUserClient *uc, uint32_t method, const void *in, void *out) {
