@@ -473,24 +473,6 @@ int lineAudit(uint64_t pa, size_t bytes, uint32_t *dirty, uint32_t *stale) {
     return 0;
 }
 // NativeAdrenoVm::sampleWord's DRAM reader (int-070): one aligned word through a fresh uncached mapping.
-bool physWrite64(uint64_t pa, uint64_t value) {
-    const vm_offset_t va = ml_io_map_unmappable(vm_offset_t(pa & ~uint64_t(0xfff)), 0x1000, 0x7 /* VM_WIMG_IO */);
-    if (!va) return false;
-    *reinterpret_cast<volatile uint64_t *>(va + (pa & 0xff8)) = value;
-    __asm__ volatile("dsb sy" ::: "memory");
-    ml_io_unmap(va, 0x1000);
-    return true;
-}
-/* The write side of dramRead32: the client's IB has no kernel mapping, so the word goes in through the same
- * uncached physical aperture, as a read-modify-write of the aligned pair. */
-int dramWrite32(uint64_t pa, uint32_t value) {
-    uint64_t w = 0;
-    const uint64_t aligned = pa & ~uint64_t(7);
-    if (!physRead64(aligned, &w)) return 1;
-    const unsigned shift = (pa & 4) * 8;
-    w = (w & ~(uint64_t(0xffffffffu) << shift)) | (uint64_t(value) << shift);
-    return physWrite64(aligned, w) ? 0 : 1;
-}
 int dramRead32(uint64_t pa, uint32_t *value) {
     uint64_t w = 0;
     if (!physRead64(pa & ~uint64_t(7), &w)) return 1;
@@ -1229,12 +1211,7 @@ void perfctrSramProbe() {
 // else. If its fence retires, the framed prologue is sound and whatever stops the command processor is in
 // the client's own IB; if it does not, the prologue itself is where it stops.
 extern "C" volatile uint32_t native_adreno_reset_bits;
-extern "C" volatile uint32_t native_adreno_thread_ctrl;
-extern "C" volatile uint32_t native_adreno_prologue_level;
 extern "C" volatile uint32_t native_adreno_no_bv;
-extern "C" volatile uint32_t native_adreno_fence_level;
-extern "C" volatile uint32_t native_adreno_bv_ring;
-extern "C" int (*native_adreno_dram_write32)(uint64_t, uint32_t);
 /* What the command processor itself reports about the indirect buffer it is inside: [0]/[1] CP_IB1_BASE, [2] its
  * remaining budget in dwords, [3]/[4] CP_IB2_BASE, [5] its budget, [6]/[7] CP_RB_WPTR/CP_RB_RPTR. A budget that
  * stopped part-way through names the byte the stream died at. */
@@ -1253,53 +1230,6 @@ extern "C" void native_gpu_ib_state(uint32_t *out) {
     out[19] = gpuRd(0x0821); out[20] = gpuRd(0x0825); out[21] = gpuRd(0x0824);
     out[22] = gpuRd(0x0949); out[23] = gpuRd(0x094a);
     out[24] = gpuRd(0x0948); out[25] = gpuRd(0x094b); out[26] = gpuRd(0x094c); out[27] = gpuRd(0x094d);
-}
-void framedSubmitProbe() {
-    /* One framed submission per boot, which is all a stopped command processor allows: a refused submission
-     * leaves it stopped, so every later one only queues. The two boot arguments choose how much prologue and
-     * which fence shape this boot's single test uses. */
-    const NativeAdrenoRingClock clk{nullptr, ringNow, ringIdle};
-    unsigned prologue = 0, fence = 0, tctrl = 0x80000001u;
-    PE_parse_boot_argn("fuxi-probe-prologue", &prologue, sizeof prologue);
-    PE_parse_boot_argn("fuxi-probe-fence", &fence, sizeof fence);
-    PE_parse_boot_argn("fuxi-probe-tctrl", &tctrl, sizeof tctrl);
-    native_adreno_prologue_level = prologue;
-    native_adreno_fence_level = fence;
-    native_adreno_thread_ctrl = tctrl;
-    uint32_t w[1] = {};
-    if (AdrenoPM4Type7(0x26, 0, w) != AdrenoPM4Success) { printf("fuxi-gpu: framed pm4 failed\n"); return; }
-    /* The plain path retires a fence; the framed one does not, and the packet it adds is CP_THREAD_CONTROL.
-     * Two orders, one boot apart: the packet first (as a client IB has it) and the packet second, after the
-     * scratch write every working submission starts with. */
-    for (unsigned order = 0; order < 2; ++order) {
-        uint32_t body[8] = {};
-        uint32_t tc = 0, scratch = 0, noop = 0;
-        if (AdrenoPM4Type7(0x17, 1, &tc) != AdrenoPM4Success) continue;
-        if (AdrenoPM4Type4(0x885, 1, &scratch) != AdrenoPM4Success) continue;
-        if (AdrenoPM4Type7(0x26, 0, &noop) != AdrenoPM4Success) continue;
-        size_t n = 0;
-        if (order == 0) { body[n++] = tc; body[n++] = tctrl; body[n++] = scratch; body[n++] = 0; }
-        else { body[n++] = scratch; body[n++] = 0; body[n++] = tc; body[n++] = tctrl; }
-        body[n++] = noop;
-        uint32_t f = 0;
-        const IOReturn ps = gRing.submit(body, n, &f);
-        if (ps) { printf("fuxi-gpu: plain+tctrl order %u submit %x\n", order, unsigned(ps)); return; }
-        uint32_t sv = 0;
-        const uint32_t pr = gRing.wait(f, &clk, 100000, &sv);
-        printf("fuxi-gpu: plain+tctrl order %u seq %u wait %x seen %x\n", order, f, pr, sv);
-        if (!pr && sv == f) return;   /* this order works; no point testing the other */
-    }
-    printf("fuxi-gpu: probe ring current %u poisoned %u\n", gRing.current() ? 1 : 0, gRing.poisoned() ? 1 : 0);
-    uint32_t value = 0;
-    const IOReturn s = gRing.submitFramed(w, 1, &value);
-    if (s) { printf("fuxi-gpu: probe prologue %u fence %u submit %x\n", prologue, fence, unsigned(s)); return; }
-    uint32_t seen = 0;
-    const uint32_t r = gRing.wait(value, &clk, 100000, &seen);
-    printf("fuxi-gpu: probe prologue %u fence %u tctrl %x seq %u wait %x seen %x\n",
-           prologue, fence, tctrl, value, r, seen);
-    native_adreno_prologue_level = 0;
-    native_adreno_fence_level = 0;
-    native_adreno_thread_ctrl = 0;
 }
 // The BV ring's registers next to the BR ring's: the BR ring is programmed and works, the BV ring only has
 // its rptr address and APRIV written. Read-only, so a wrong guess about their offsets cannot change anything.
@@ -1330,7 +1260,6 @@ void publishAndWrapperTest(bool rounds) {
     // userClientTest attaches the submit object; with the self-tests skipped it still has to be attached before a client opens.
     if (vm) gSubmit.attach(vm, &gRing);
     native_adreno_dram_read32 = dramRead32;
-    native_adreno_dram_write32 = dramWrite32;
     native_adreno_cached_read32 = cachedRead32;
     native_adreno_line_audit = lineAudit;
     coherenceProbe(vm);
@@ -1338,7 +1267,6 @@ void publishAndWrapperTest(bool rounds) {
     {unsigned wc = 1; PE_parse_boot_argn("sheng-gpu-wc", &wc, sizeof wc); native_adreno_wc_enabled = wc ? 1 : 0;}
     perfctrSramProbe();
     bvRingProbe();
-    framedSubmitProbe();
     openCpAperture();
     // The GPU's input address size. A user connection's window is (1 << ias) - GpuClientVaStart, and the driver refuses a
     // zero window with kIOReturnNoResources, so a hardcoded 32 left every Metal client unable to mount.
@@ -1694,8 +1622,8 @@ void gpuStart() {
     const NativeAdrenoRingIo rio{nullptr, ringWrite, ringRead, ringBarrier, nullptr, nullptr};
     const NativeAdrenoRingCache cache{nullptr, ringPublish, ringAcquire};
     native_adreno_fence_phys = gGpuBuffers[2].physical;   // the page the CP writes its timestamps to, for the UFS log
-    /* native_adreno_bv_ring stays 0: programming a BV ring at 0xa60 with PIPE_BV selected stops the bring-up
-     * before it finishes at all (fence live 0, marks 0). See docs/gpu-bringup.md. */
+    /* The pinned Adreno740 ABI has no native_adreno_bv_ring control. The destructive BV-location experiment
+     * therefore remains separately opt-in through fuxi-probe-bv-ring=1 and is off in every normal image. */
     /* The framed path is unusable on this board even with SYNC_THREADS gone: with it the system stops reporting
      * altogether (the boot log ends where the display reports would start), so the client's IB goes straight to
      * the ring. */
@@ -1714,7 +1642,7 @@ void gpuStart() {
     /* BV ring: base/cntl/wptr, mirroring the BR ring. Written here, after the CP init, because the init
      * rewrites CP_RB_* and would otherwise leave the BV ring with no ring at all -- which is what makes every
      * CP_THREAD_CONTROL stop the command processor. See docs/gpu-bringup.md. */
-    if (native_adreno_bv_ring) {
+    if (bootArg("fuxi-probe-bv-ring", 0)) {
         /* 0xa80..0xa87 lies inside the last (infinite) span of the CP's protect table, so writes there are
          * dropped. Protection is a control word, not a range edit: turn it off, program the ring, turn it back. */
         /* The BV block mirrors BR's: BR is BASE 0x800, CNTL 0x802, RPTR_ADDR 0x804, RPTR 0x806, WPTR 0x807,

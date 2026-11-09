@@ -510,29 +510,19 @@ void native_legacy_display_probe(void) {
     native_legacy_display_checkpoint();
 }
 void native_legacy_display_late_probe(void);
-// The late probe starts every other subsystem this board has, the way sheng's does. Only the two that
-// exist on fuxi so far are called: the owned AppleKeyStore (package/FuxiKeyStoreProbe.cpp) and the FTS
-// touch controller (package/FuxiTouchProbe.cpp). Each of HID input, CPU frequency, GPU power, backlight
-// and the DPU scanout is its own porting step; calling a probe that is not linked fails the kernel link,
-// so they are added here as they land rather than stubbed.
-extern void native_keystore_probe(void);
+// The touch probe owns HID startup on fuxi. Do not import the sheng KeyStore,
+// buttons or second HID entry points: none is part of this board's selected
+// component/archive set, and the touch archive already starts the one real HID
+// device after sensing is live.
 extern void native_touch_probe(void);
 extern "C" void sheng_gpu_power_probe(void);
 extern "C" void fuxi_gpu_addon_report(void);
 extern "C" void fuxi_gpu_power_report(void);
-extern "C" void native_hid_input_probe(void);
 extern "C" const char *fuxi_hid_row(char *out, size_t size);
 extern "C" void fuxi_display_client_report(void);
 extern "C" bool fuxi_hid_settled(void);
-extern "C" void fuxi_buttons_probe(void);
 void native_legacy_display_late_probe(void) {
-    native_keystore_probe();
     native_touch_probe();
-    /* Power and volume keys: the same probe starts them, behind fuxi-buttons=1 (package/FuxiButtons.cpp). */
-    fuxi_buttons_probe();
-    /* The HID stack, as sheng and old start it from this probe: the digitizer device is published before the
-     * display so backboardd finds an IOHIDDevice when it starts. */
-    native_hid_input_probe();
     {
         /* Later, once userland has had time to open the display and the presenter, report who did. */
         thread_t c = nullptr;

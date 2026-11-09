@@ -10,7 +10,7 @@ summary = "Xiaomi 13 (fuxi). Board files from the UniXNU device template, the FT
 id = "configuration"
 status = "implemented"
 components = ["ArmDTPlatform", "ArmCpu", "SoftwareAES", "XnuPrelink", "DarwinBoot"]
-paths = ["board.toml", "feeds.toml", "configs/**", ".gitmodules", ".github/**", ".gitignore", ".gitattributes", "local.toml.example", "LICENSE", "scripts/*boot-progress*", "package/*BootProgress*", "package/*Watchdog*"]
+paths = ["board.toml", "feeds.toml", "configs/**", ".gitmodules", ".github/**", ".gitignore", ".gitattributes", "local.toml.example", "LICENSE", "scripts/*boot-progress*", "package/*BootProgress*", "package/*BootLog*", "package/*Watchdog*"]
 inputs = ["UniXNU examples/device template (SM8550, iPadOS 17.7.11 profile).", "UniXNU-sm8550-common at 23b2049fcd9e30356161def84231334fb55ecca9."]
 configuration = ["board.toml: name fuxi, kit fuxi, soc_source sm8550, os_profile ipados-17.7.11-21H461, device_tree.source device:dts/fuxi.dts.", "configs/fuxi_defconfig: the template options, CONFIG_XNU_NATIVE_ADRENO off (the SoC fragment turns it on), and CONFIG_XNU_EXTRA_LD_ARCHIVES for the touch archive and the force-loaded HID archive. The arch fragment sets CONFIG_XNU_BUILD_ARCHIVES, CONFIG_XNU_NATIVE_AES, CONFIG_XNU_NATIVE_ARCH_TIMER and CONFIG_XNU_NATIVE_PAN; the OS fragment sets CONFIG_XNU_SOURCE_MOCKFS.", "[kernel] archives in build order: corecrypto (plain and namespaced), ArmDTPlatform, ArmCpu, SoftwareAES and its bindings, libpthread, the mockfs fixture, build-fuxi-platform-power.py, build-fuxi-hid-input.py, build-fuxi-ram-block.py, build-fuxi-touch.py."]
 procedure = ["./unixnu defconfig fuxi_defconfig -D ../unixnu-fuxi", "./unixnu status --json", "./unixnu build kernel"]
@@ -19,6 +19,8 @@ completion = ["All source pins resolve; every selected component has a record; s
 limits = ["The GitHub App cannot write workflow files (.github/workflows/*); workflow changes go through the GitHub web editor as separate commits, and a commit that changes build.yml must carry its configuration finding in the same commit, because the record checker validates only that commit's own diff."]
 next_action = ["Persistent Data phase A: wire the vendored seed grower into the data-seed job and host-verify the grown seed (213 GiB container); then phase B adds sheng-data-persist=1 to kernel_args for a read-only proof boot, and phase C opens writes with sheng-data-persist=2 under its own owner approval. The stage order (persistent Data, then functional UI/display, then firmware enrollment) and its reasoning are recorded in Issue #1 (comment 6679165278)."]
 evidence = [
+  { kind = "source", reference = "package/FuxiBootLogExport.c", result = "Bounded alternating-half UFS pipeline-cache export; deliberately contains no reset, panic reboot, autoreset or fastboot path." },
+  { kind = "source", reference = "package/FuxiBootProgress.c", result = "Provides the V2-compatible progress text and non-owning scanout observer ABI while leaving framebuffer ownership and automatic reboot disabled." },
   { kind = "source", reference = "board.toml", result = "The kernel archive order seeds the qualified 21H461 Legacy graphics ABI before the mobile-graphics audit and display archive." },
   { kind = "source", reference = "board.toml", result = "Board selection and archive order" },
   { kind = "host", command = "./unixnu defconfig fuxi_defconfig; ./unixnu build kernel", revision = "8b4c03f69fc15878d7ee92c0f157215fa235d78d", reference = "https://github.com/OddlyLabs/unixnu-fuxi/actions/runs/41261795785", result = "All sources resolved, 62 patches applied, nine archives built, kernel linked and prelinked" },
@@ -119,6 +121,7 @@ completion = ["A known frame appears with correct geometry and colors, then user
 limits = ["No device evidence for display."]
 next_action = ["Read the framebuffer the firmware publishes on fuxi (address, stride, format)."]
 evidence = [
+  { kind = "source", reference = "scripts/build-fuxi-display.py", result = "Legacy display vtable slot 345 is generated and link-audited as isTimingEnabled(), returning true only for the primary display with a mapped boot framebuffer and logical power; this ports the OnePlus-qualified ABI without importing device timing registers." },
   { kind = "source", reference = "scripts/fuxi-21H461-mobile-graphics-legacy-abi.json", result = "Qualified 21H461 Legacy framebuffer ABI baseline used to seed the runtime audit on clean CI trees." },
   { kind = "source", reference = "fuxi_touch_panel_porting.md", result = "Panel facts with sources (section 3)" },
 ]
@@ -169,7 +172,10 @@ findings = ["No fuxi GPU observation yet.", "The action-pinned Adreno740 149ef6d
 completion = ["GPU submissions complete, mapping/fence handling is correct, a known image renders, and the selected Metal client presents it."]
 limits = ["Not started."]
 next_action = ["None before the first boot."]
-evidence = []
+evidence = [
+  { kind = "source", reference = "package/FuxiDisplayProbe.c", result = "Probe consumes only symbols exported by pinned Adreno740 revision 149ef6d8 and decodes its 28-dword IB log without reading beyond the published ABI." },
+  { kind = "source", reference = "package/FuxiGpuPowerProbe.cpp", result = "V2-only submission controls absent from the pinned driver are removed; the destructive BV experiment remains separately opt-in and is off in the normal image." },
+]
 
 [[area]]
 id = "network"

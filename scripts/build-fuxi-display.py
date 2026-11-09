@@ -46,7 +46,8 @@ static constexpr unsigned kLegacyVsyncClients=5592;
 static constexpr unsigned kRequestRect0=17,kRequestRect1=81,kRequestMasks=792,kRequestOptions=804,kRequestDims=816,kRequestSurfaces=2624;
 // Backend leaves: pure original slots the owned backend implements only as guards. The list is the
 // audit's abstract_slots minus 213 and 337, which stay abstract in the declaration below.
-#define NATIVE_LEGACY_LEAVES(LEAF) LEAF(211) LEAF(245) LEAF(246) LEAF(306) LEAF(307) LEAF(338) LEAF(345)
+#define NATIVE_LEGACY_LEAVES(LEAF) LEAF(211) LEAF(245) LEAF(246) LEAF(306) LEAF(307) LEAF(338) \
+ bool isTimingEnabled() override { return primary && bootMapping && logicalPM; }
 class IOMobileFramebufferLegacy : public IOService {
  OSDeclareAbstractStructors(IOMobileFramebufferLegacy)
  unsigned char originalPrivate[0x18a0-sizeof(IOService)];
@@ -123,6 +124,10 @@ KNOWN = {
     295: ' virtual void completeCurrentSwap();',
     296: ' virtual bool validateSwap(const OriginalLegacySwapRequest *);',
     301: ' virtual bool getRefreshAttributes(uint64_t *,bool);',
+    # The original 21H461 swap-timeout path calls slot 345 as a
+    # no-argument boolean TimingEnable query.  The same ABI was qualified
+    # against all three original call sites by the OnePlus 13T port.
+    345: ' virtual bool isTimingEnabled()=0;',
     354: ' virtual int applyStateRequest(OriginalLegacyStateRequest *,bool);',
     337: ' virtual IOReturn collectCompletionReports(uint32_t,void *,uint32_t *,uint32_t)=0;',
 }
@@ -270,6 +275,8 @@ def vtable_bindings(obj, audit):
     compiled = [relocations.get(vtable + 16 + index * 8) for index in range(358)]
     if not all(compiled):
         sys.exit('the compiled vtable is missing original entries')
+    if 'NativeLegacyDisplay15isTimingEnabledEv' not in compiled[345]:
+        sys.exit('slot 345 is not NativeLegacyDisplay::isTimingEnabled')
     table = {}
     for index, name in enumerate(compiled):
         if name.startswith(('__ZN25IOMobileFramebufferLegacy', '__ZNK25IOMobileFramebufferLegacy')):

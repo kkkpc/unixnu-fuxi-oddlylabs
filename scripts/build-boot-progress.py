@@ -48,6 +48,7 @@ SOURCE = ROOT / 'kits/fuxi/FuxiBootProgress.c'
 RECORD = ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/osfmk/DEVELOPMENT/startup.o.json'
 POLICY_SOURCE = ROOT / 'kits/fuxi/BootWatchdogPolicy.c'
 POLICY_RECORD = ROOT / 'build/xnu/ios-obj/DEVELOPMENT_ARM64_BCM2837/bsd/DEVELOPMENT/kern_exec.o.json'
+EXPORT_SOURCE = ROOT / 'kits/fuxi/FuxiBootLogExport.c'
 
 ENTRY_POINTS = ['_boot_progress_init', '_boot_progress_start', '_boot_progress_active',
                 '_boot_progress_bind', '_boot_progress_putc', '_boot_progress_stage',
@@ -130,9 +131,36 @@ policy_defined = {fields[-1] for line in policy_listing.splitlines()
 require('_sheng_boot_watchdog_policy' in policy_defined,
         'boot-progress archive is missing _sheng_boot_watchdog_policy')
 
+# V2's ordered NativeAdreno pipeline-cache export, without V2's background
+# logger or any reset/autoreset code.  It uses only the bounded NativeUfs
+# export window and is compiled from the same osfmk record as the observer.
+require(EXPORT_SOURCE.is_file(), 'kits/fuxi/FuxiBootLogExport.c is missing')
+export_obj = OUT / 'FuxiBootLogExport.o'
+export_command, k, export_arguments = [], 0, record['arguments']
+while k < len(export_arguments):
+    arg = export_arguments[k]
+    if arg == record['file']:
+        export_command.append(str(EXPORT_SOURCE))
+    elif arg == '-o':
+        export_command += ['-o', str(export_obj)]
+        k += 1
+    elif arg in ('-MF', '-MT', '-MJ'):
+        k += 1
+    elif arg == '-Xclang' and k + 1 < len(export_arguments) and export_arguments[k + 1].startswith('-W'):
+        k += 1
+    elif not arg.startswith('-W'):
+        export_command.append(arg)
+    k += 1
+export_command += ['-mgeneral-regs-only', '-Wall', '-Wextra', '-Werror']
+run(export_command, cwd=record['directory'])
+export_listing = run(['xcrun', 'nm', '-g', str(export_obj)], text=True)
+require('_boot_log_export_put' in {fields[-1] for line in export_listing.splitlines()
+                                   if len(fields := line.split()) >= 3 and fields[1] != 'U'},
+        'boot-progress archive is missing _boot_log_export_put')
+
 archive = OUT / 'libBootProgress.a'
 archive.unlink(missing_ok=True)
-run(['xcrun', 'ar', 'rcs', str(archive), str(obj), str(policy_obj)])
+run(['xcrun', 'ar', 'rcs', str(archive), str(obj), str(policy_obj), str(export_obj)])
 (OUT / 'build-report.json').write_text(json.dumps({
     'source': 'kits/fuxi/FuxiBootProgress.c',
     'source_sha256': hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
@@ -142,4 +170,9 @@ run(['xcrun', 'ar', 'rcs', str(archive), str(obj), str(policy_obj)])
     'policy_source_sha256': hashlib.sha256(POLICY_SOURCE.read_bytes()).hexdigest(),
     'policy_object_sha256': hashlib.sha256(policy_obj.read_bytes()).hexdigest(),
     'policy_symbol': '_sheng_boot_watchdog_policy',
+    'export_source': 'kits/fuxi/FuxiBootLogExport.c',
+    'export_source_sha256': hashlib.sha256(EXPORT_SOURCE.read_bytes()).hexdigest(),
+    'export_object_sha256': hashlib.sha256(export_obj.read_bytes()).hexdigest(),
+    'export_symbol': '_boot_log_export_put',
+    'automatic_reboot': False,
 }, indent=2) + '\n')

@@ -118,41 +118,20 @@ extern volatile unsigned int native_adreno_table_switches[8];
  * [1] its index, [2] the status, [3] how many were checked, [4]/[5] the ring's IOVA and bytes there. */
 /* The framed prologue as written into the ring (Adreno740 NativeAdrenoRing.cpp emitPrologue):
  * [0] words, [1] reset, [2] table, [3] stamps, then the words. */
-extern volatile unsigned int native_adreno_mark_log[32];
-extern volatile unsigned int native_adreno_mark_log_count;
 extern volatile unsigned int native_adreno_vm_check[8];
-/* The first 28 dwords of the client's newest IB (Adreno740 NativeAdrenoSubmit.cpp): [0] fence, [1]/[2] iova,
+/* The first 28 dwords of the client's newest IB (pinned Adreno740 NativeAdrenoSubmit.cpp): [0] fence, [1]/[2] iova,
  * [3] bytes, then the words. */
-extern volatile unsigned int native_adreno_ib_log[4][4+256];
+extern volatile unsigned int native_adreno_ib_log[4][4+28];
 extern volatile unsigned int native_adreno_ib_log_count;
-extern volatile unsigned int native_adreno_ib_peek;
-extern volatile unsigned int native_adreno_bv_patched[4];
-extern volatile unsigned int native_adreno_bv_seen[8];
 extern volatile unsigned int native_adreno_wc_audit[6];
 extern volatile unsigned int native_adreno_wc_distrusted;
-extern volatile unsigned int native_adreno_ib_ind[16];
-extern volatile unsigned int native_adreno_empty_ib[4];
 extern void native_gpu_ib_state(unsigned int *out);
-extern volatile unsigned int native_adreno_amble[16];
-extern volatile unsigned int native_adreno_ib_bufs[8][10];
-extern volatile unsigned int native_adreno_ib_bufs_count;
-extern volatile unsigned int native_adreno_ib_hist[16][6];
 /* The touch probe's own report row and where its thread is (FuxiTouchProbe.cpp): the row is refreshed by the probe, so
  * reading it here costs the touch thread nothing. */
 extern char native_touch_rows[4][120];
 extern volatile unsigned int native_touch_loop_step, native_touch_step;
 extern volatile unsigned int native_touch_irq_stats[4];
 extern volatile int native_touch_error;
-/* The power/volume key driver (FuxiButtons.cpp): stage, interrupts, reports, pressed mask, the two APIDs, cleared foreign
- * interrupts, the PDC version, the last error and spurious interrupts. */
-extern volatile int fuxi_buttons_stats[10];
-extern volatile int fuxi_buttons_edges[6];
-/* What the HID device did with those reports: buttonsAction submissions and the last IOReturn. */
-extern unsigned fuxi_hid_button_submits(void);
-extern unsigned fuxi_hid_button_result(void);
-extern volatile unsigned int native_adreno_wait_mem[4];
-extern volatile unsigned int native_adreno_patch_walk[6];
-extern volatile unsigned int native_adreno_patch_target[52];
 extern volatile unsigned int native_adreno_prologue[96];
 extern volatile unsigned int native_adreno_prologue_info[4];
 /* The fence event ring (Adreno740 NativeAdrenoSubmit.cpp): type 1 submit, 2 wait-enter, 3 wait-complete, 4 wait-timeout. */
@@ -174,14 +153,6 @@ void fuxi_display_client_report(void) {
     printf("fuxi-display: fence live %d submitted %u retired %u\n", live, submitted, retired);
     printf("fuxi-touch: loop %u step %u err %d irq %u/%u\n%s\n", native_touch_loop_step, native_touch_step,
            native_touch_error, native_touch_irq_stats[1], native_touch_irq_stats[2], native_touch_rows[3]);
-    printf("fuxi-buttons: stage %d irq %d reports %d mask %d pon %d gpio %d clears %d pdc %x err %d spur %d submit %u/%x\n",
-           fuxi_buttons_stats[0], fuxi_buttons_stats[1], fuxi_buttons_stats[2], fuxi_buttons_stats[3],
-           fuxi_buttons_stats[4], fuxi_buttons_stats[5], fuxi_buttons_stats[6], (unsigned)fuxi_buttons_stats[7],
-           fuxi_buttons_stats[8], fuxi_buttons_stats[9],
-           fuxi_hid_button_submits(), fuxi_hid_button_result());
-    printf("fuxi-buttons: edges pon %x last %x gpio %x last %x bits %x\n",
-           fuxi_buttons_edges[0], fuxi_buttons_edges[1], fuxi_buttons_edges[2], fuxi_buttons_edges[3],
-           fuxi_buttons_edges[4]);
     printf("fuxi-display: clients %u pid %d frames %u\n",
            native_legacy_client_calls, native_legacy_client_pid, native_legacy_frame_count);
     printf("fuxi-display: gop offers %llu done %llu fail %llu abandon %llu\n",
@@ -189,25 +160,10 @@ void fuxi_display_client_report(void) {
     {
         unsigned int ib[28] = {0};
         native_gpu_ib_state(ib);
-        printf("fuxi-metal: audit wait_mem seen %u (the runtime must emit none)\n", native_adreno_wait_mem[0]);
-    printf("fuxi-metal: wc audit n%u lines%u dirty%u stale%u last%x rewc%u distrusted%u\n",
-           native_adreno_wc_audit[0], native_adreno_wc_audit[1], native_adreno_wc_audit[2],
-           native_adreno_wc_audit[3], native_adreno_wc_audit[4], native_adreno_wc_audit[5],
-           native_adreno_wc_distrusted);
-        printf("fuxi-metal: patch_walk streams %u links %u skipped %u bounded %u tctrl %u changed %u\n",
-               native_adreno_patch_walk[0], native_adreno_patch_walk[1],
-               native_adreno_patch_walk[2], native_adreno_patch_walk[3],
-               native_adreno_patch_walk[4], native_adreno_patch_walk[5]);
-        if (native_adreno_patch_target[2]) {
-            printf("fuxi-metal: patch_target %x%08x words %u peek %x:", native_adreno_patch_target[1],
-                   native_adreno_patch_target[0], native_adreno_patch_target[2], native_adreno_patch_target[3]);
-            for (unsigned base = 0; base < native_adreno_patch_target[2] && base < 48; base += 12) {
-                printf("\nfuxi-metal:   target+%u:", base);
-                for (unsigned k = base; k < base + 12 && k < native_adreno_patch_target[2] && k < 48; ++k)
-                    printf(" %x", native_adreno_patch_target[4 + k]);
-            }
-            printf("\n");
-        }
+        printf("fuxi-metal: wc audit n%u lines%u dirty%u stale%u last%x rewc%u distrusted%u\n",
+               native_adreno_wc_audit[0], native_adreno_wc_audit[1], native_adreno_wc_audit[2],
+               native_adreno_wc_audit[3], native_adreno_wc_audit[4], native_adreno_wc_audit[5],
+               native_adreno_wc_distrusted);
     printf("fuxi-display: cp ib1 %x%08x rem %x ib2 %x%08x rem %x sds %x%08x rem %x\n",
                ib[1], ib[0], ib[2], ib[4], ib[3], ib[5], ib[7], ib[6], ib[8]);
         printf("fuxi-display: cp mrb %x%08x rem %x vsd %x wptr %x rptr %x\n",
@@ -250,13 +206,6 @@ void fuxi_display_client_report(void) {
     }
     {
         struct FuxiMetalDiagFields *d = &native_adreno_metal_diag;
-        {
-            const unsigned total = native_adreno_mark_log_count;
-            printf("fuxi-metal: marklog %u:", total);
-            const unsigned from = total > 32 ? total - 32 : 0;
-            for (unsigned k = from; k < total; ++k) printf(" %x", native_adreno_mark_log[k & 31]);
-            printf("\n");
-        }
         printf("fuxi-metal: scanout marks %u:", d->marks_total);
         for (unsigned k = 0; k < 16; ++k) printf(" %x", d->marks[k]);
         printf("\n");
@@ -266,22 +215,16 @@ void fuxi_display_client_report(void) {
         const unsigned total = native_adreno_ib_log_count;
         if (total) {
             volatile unsigned int *e = native_adreno_ib_log[(total - 1) & 3];
-            printf("fuxi-metal: client_ib fence %u iova %x%08x bytes %u peek %x\n",
-                   e[0], e[2], e[1], e[3], native_adreno_ib_peek);
-            for (unsigned k = 0; k < 256; k += 16) {
+            printf("fuxi-metal: client_ib fence %u iova %x%08x bytes %u\n",
+                   e[0], e[2], e[1], e[3]);
+            for (unsigned k = 0; k < 28; k += 14) {
                 char ibl[160]; unsigned il = 0;
-                for (unsigned j = k; j < k + 16; ++j) il += (unsigned)snprintf(ibl + il, sizeof ibl - il, " %08x", e[4 + j]);
+                for (unsigned j = k; j < k + 14 && j < 28; ++j)
+                    il += (unsigned)snprintf(ibl + il, sizeof ibl - il, " %08x", e[4 + j]);
                 printf("fuxi-metal: ib+%03u%s\n", k, ibl);
             }
         }
     }
-    printf("fuxi-metal: ib_ind n %u peek %x addr %x%08x size %u words %x %x %x %x %x %x %x %x\n",
-           native_adreno_ib_ind[0], native_adreno_ib_ind[1], native_adreno_ib_ind[3], native_adreno_ib_ind[2],
-           native_adreno_ib_ind[4], native_adreno_ib_ind[5], native_adreno_ib_ind[6], native_adreno_ib_ind[7],
-           native_adreno_ib_ind[8], native_adreno_ib_ind[9], native_adreno_ib_ind[10], native_adreno_ib_ind[11],
-           native_adreno_ib_ind[12]);
-    printf("fuxi-metal: ib_ind sample st %x cached %x dram %x\n",
-           native_adreno_ib_ind[13], native_adreno_ib_ind[14], native_adreno_ib_ind[15]);
     {
         unsigned int submitted = 0, retired = 0;
         (void)native_adreno_fences(&submitted, &retired);
@@ -294,30 +237,6 @@ void fuxi_display_client_report(void) {
                    e[4], e[5], e[6], e[7], e[8], e[9], e[10], e[11]);
         }
     }
-    printf("fuxi-metal: ib_bufs %u\n", native_adreno_ib_bufs_count);
-    for (unsigned b = 0; b < native_adreno_ib_bufs_count && b < 8; ++b)
-        printf("fuxi-metal:   b%u addr %x%08x bytes %u peek %x head %x %x %x %x %x %x %x\n", b,
-               native_adreno_ib_bufs[b][1], native_adreno_ib_bufs[b][0], native_adreno_ib_bufs[b][2],
-               native_adreno_ib_bufs[b][9], native_adreno_ib_bufs[b][3], native_adreno_ib_bufs[b][4],
-               native_adreno_ib_bufs[b][5], native_adreno_ib_bufs[b][6], native_adreno_ib_bufs[b][7],
-               native_adreno_ib_bufs[b][8]);
-    for (unsigned h = 0; h < 16; ++h) {
-        if (!native_adreno_ib_hist[h][0]) continue;
-        printf("fuxi-metal: hist f%u ambles %u addr %x%08x peek %x first %x\n",
-               native_adreno_ib_hist[h][0], native_adreno_ib_hist[h][1], native_adreno_ib_hist[h][3],
-               native_adreno_ib_hist[h][2], native_adreno_ib_hist[h][4], native_adreno_ib_hist[h][5]);
-    }
-    printf("fuxi-metal: amble n %u peek %x addr %x%08x words %x %x %x %x %x %x %x %x\n",
-           native_adreno_amble[0], native_adreno_amble[1], native_adreno_amble[3], native_adreno_amble[2],
-           native_adreno_amble[4], native_adreno_amble[5], native_adreno_amble[6], native_adreno_amble[7],
-           native_adreno_amble[8], native_adreno_amble[9], native_adreno_amble[10], native_adreno_amble[11]);
-    printf("fuxi-metal: empty_ib dropped %u last %x\n", native_adreno_empty_ib[0], native_adreno_empty_ib[1]);
-    printf("fuxi-metal: bv_seen sel3 %u sel2 %u sel1_nobin %u other %u last %x %x %x %x\n",
-           native_adreno_bv_seen[0], native_adreno_bv_seen[1], native_adreno_bv_seen[2], native_adreno_bv_seen[3],
-           native_adreno_bv_seen[4], native_adreno_bv_seen[5], native_adreno_bv_seen[6], native_adreno_bv_seen[7]);
-    printf("fuxi-metal: bv_patch ok %u last_bytes %u refused %u back %x\n",
-           native_adreno_bv_patched[0], native_adreno_bv_patched[1], native_adreno_bv_patched[2],
-           native_adreno_bv_patched[3]);
     {
         char methodLine[200]; unsigned used = 0;
         for (unsigned k = 0; k < 20; ++k) {

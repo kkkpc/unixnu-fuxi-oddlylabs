@@ -63,6 +63,45 @@
 #include <arm/thread.h>
 #include <kern/task.h>
 
+// Display/GPU ABI carried by V2's full BootProgress implementation.  This
+// board still uses the lightweight lifecycle/fault observer, so it never owns
+// or repaints the framebuffer: scanout preparation therefore succeeds
+// immediately, cancel is only an observation, and pulse-anchor registration is
+// explicitly refused.  The GPU rows remain real shared storage for the power
+// probe and later log readers.
+char boot_progress_ext[8][48];
+char boot_progress_ext_wide[2][112];
+volatile unsigned int boot_progress_scanout_prepares;
+volatile unsigned int boot_progress_scanout_cancels;
+volatile unsigned int boot_progress_pulse_refusals;
+
+int
+boot_progress_prepare_scanout(void)
+{
+	boot_progress_scanout_prepares++;
+	__asm__ volatile("dmb ish" ::: "memory");
+	return 1;
+}
+
+void
+boot_progress_cancel_scanout(void)
+{
+	boot_progress_scanout_cancels++;
+}
+
+int
+boot_progress_pulse_anchor(uintptr_t base, uint64_t bytes, unsigned int width,
+    unsigned int height, unsigned int row_bytes)
+{
+	(void)base;
+	(void)bytes;
+	(void)width;
+	(void)height;
+	(void)row_bytes;
+	boot_progress_pulse_refusals++;
+	return 0;
+}
+
 // The fault capture runs in the trapping process's own context, so
 // these BSD helpers identify it without any process-list walk.
 extern int proc_selfpid(void);
