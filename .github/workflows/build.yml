@@ -268,7 +268,6 @@ jobs:
           rustup target add aarch64-apple-ios --toolchain 1.98.0
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/prepare-fuxi-metal-userspace.py" --tree "$tree"
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/patch-adreno-host-fixture.py" --tree "$tree"
-          python3 "$tree/scripts/build-turnip-darwin.py" --target host
           python3 "$tree/scripts/build-turnip-darwin.py" --target ios
           python3 "$tree/scripts/build-adreno-metal-plugin.py"
           mkdir -p "$tree/build/original-static-system-trust"
