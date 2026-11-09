@@ -42,6 +42,7 @@ def prelink_spec():
     profile_roots = [ROOT / "profiles/os"]
     profile_roots.extend(parent / "profiles/os" for parent in ROOT.parents)
     seen = set()
+    profiles = []
     for profile_root in profile_roots:
         if profile_root in seen or not profile_root.is_dir():
             continue
@@ -52,8 +53,15 @@ def prelink_spec():
             spec = data.get("kernel", {}).get("prelink")
             # The profile is read from the UniXNU checkout, but build outputs
             # and component kits are rooted in the assembled device tree.
-            if spec and (ROOT / spec.get("kernel", "")).is_file():
-                return ROOT, spec
+            if spec:
+                profiles.append((profile, data, spec))
+    wanted_build = os.environ.get("UNIXNU_IPSW_BUILD")
+    for _, data, spec in profiles:
+        if wanted_build and data.get("ipsw", {}).get("build") == wanted_build:
+            return ROOT, spec
+    for profile, _, spec in profiles:
+        if profile.parent.name.startswith("ipados-17."):
+            return ROOT, spec
     raise SystemExit("no profile-pinned kernel.prelink spec matches the bootstrap kernel")
 
 
