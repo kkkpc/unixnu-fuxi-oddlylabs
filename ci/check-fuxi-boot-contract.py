@@ -22,6 +22,11 @@ def fail(message):
 def main():
     board = tomllib.loads((ROOT / "board.toml").read_text())
     args = board.get("payload", {}).get("kernel_args", [])
+    line = " ".join(args)
+    line_bytes = len(line.encode("ascii"))
+    if line_bytes > 1000:
+        fail(f"kernel command line is {line_bytes} bytes; UniXNU payload limit is 1000")
+
     forbidden = {
         "sheng-autoreset": "automatic recovery reset",
         "fuxi-panic-fastboot": "panic-to-fastboot recovery",
@@ -33,8 +38,20 @@ def main():
             fail(f"{forbidden[name]} is enabled in board.toml: {argument}")
     required = {
         "native-fuxi-ufs-root": "1",
-        "sheng-gpu-addon": "1",
+        "offline-legacy-unit-scale": "3",
+        "sheng-dpu": "3",
+        "sheng-backlight": "1",
+        "fuxi-backlight": "dsi",
+        "fuxi-touch-stage": "4",
+        "fuxi-touch-hw": "7",
+        "sheng-log": "1",
+        "sheng-cpufreq": "4",
+        "offline-key-events": "1",
+        "-apfs_shared_datavolume": None,
         "-no_slto_panic": None,
+        "sheng-gpu-metal": "1",
+        "sheng-fb-gpu": "1",
+        "sheng-gpu-addon": "1",
     }
     present = {argument.split("=", 1)[0]: argument.split("=", 1)[1] if "=" in argument else None
                for argument in args}
@@ -48,7 +65,7 @@ def main():
     build = (ROOT / "scripts/build-fuxi-usb-debug.py").read_text()
     if "-DQUD_CONTROL_REBOOT=0" not in build:
         fail("production USB debug archive is not compiled with QUD_CONTROL_REBOOT=0")
-    print("PASS: fuxi boot contract keeps panic evidence, UFS root and GPU addon enabled")
+    print(f"PASS: fuxi boot contract keeps panic evidence and V2 parity; kernel args {line_bytes}/1000 bytes")
 
 
 if __name__ == "__main__":

@@ -159,24 +159,17 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # boot wrote is recognised, the pages it persisted answer again, and changed pages
 # keep going to the window. The reset argument stays out - with it, every boot
 # would start the overlay over and discard the accumulated state.
-# sheng-log-reserve=1024 pins the reserve the phase A grow arithmetic already
-# assumes (the driver's default is the same 1024 MiB; it is written out so the
-# window sizing has one visible source).
-kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1",
-               "armcpu-self-ipi=1", "fuxi-touch-stage=4", "fuxi-touch=4", "fuxi-touch-hw=7", "fuxi-touch-hid=1", "sheng-touch-hid=1", "native-fuxi-ufs-root=1",
-               "sheng-data-persist=2", "sheng-log-reserve=1024", "sheng-skip-setup=1", "sheng-lite=1",
-               "sheng-setup=0", "sheng-log=1", "sheng-dpu=3", "sheng-cpufreq=4", "sheng-backlight=1", "fuxi-backlight=dsi",
-               "sheng-disable-watchdogd=1", "sheng-vsync=120",
-               "offline-key-events=1", "-apfs_shared_datavolume", "-no_slto_panic", "ml-timeout-lock-panic-scale=40",
-               "offline-legacy-phase=4", "offline-legacy-register=1", "offline-legacy-gop=1",
-               "offline-legacy-pm=1", "offline-legacy-validate=1", "offline-legacy-transfer=1",
-               "offline-legacy-cpu-present=1", "offline-legacy-unit-scale=2",
-               "offline-mobile-graphics-load=1", "offline-mobile-graphics-client=1", "offline-apfs-load=1",
-               "sheng-gpu-power=9", "sheng-gpu-zap=4", "fuxi-probe-prologue=1", "fuxi-probe-tctrl=0x08000001",
-               "fuxi-cp-protect=0", "sheng-gpu-metal=1", "sheng-gpu-wc=0", "sheng-tu-debug=sysmem",
-               "sheng-gpu-dcvs=1", "sheng-fb-gpu=1", "sheng-gpu-addon=1",
-               "sheng-disable-jobs=com.apple.identityservicesd,com.apple.locationd,com.apple.CommCenter,com.apple.bluetoothd,com.apple.liveactivitiesd",
-               "qcom-usb-debug=1", "qcom-usb-ctl=1"]
+# The driver's log reserve default remains 1024 MiB, matching the phase-A grow
+# arithmetic.  Do not spend command-line bytes repeating that default.  The
+# payload has a hard 1000-byte command-line limit, so settled one-shot probes
+# and redundant setup/USB-control toggles stay out of the production profile.
+kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1", "armcpu-self-ipi=1",
+               "fuxi-touch-stage=4", "fuxi-touch=4", "fuxi-touch-hw=7", "fuxi-touch-hid=1", "sheng-touch-hid=1", "native-fuxi-ufs-root=1", "sheng-data-persist=2",
+               "sheng-log=1", "sheng-dpu=3", "sheng-cpufreq=4", "sheng-backlight=1", "fuxi-backlight=dsi", "sheng-disable-watchdogd=1", "offline-key-events=1",
+               "-apfs_shared_datavolume", "-no_slto_panic", "offline-legacy-phase=4", "offline-legacy-register=1", "offline-legacy-gop=1", "offline-legacy-pm=1", "offline-legacy-validate=1",
+               "offline-legacy-transfer=1", "offline-legacy-cpu-present=1", "offline-legacy-unit-scale=3", "offline-mobile-graphics-load=1", "offline-mobile-graphics-client=1", "offline-apfs-load=1", "sheng-gpu-power=9",
+               "sheng-gpu-zap=4", "fuxi-cp-protect=0", "sheng-gpu-metal=1", "sheng-gpu-wc=0", "sheng-tu-debug=sysmem", "sheng-gpu-dcvs=1", "sheng-fb-gpu=1",
+               "sheng-gpu-addon=1", "sheng-disable-jobs=com.apple.identityservicesd,com.apple.locationd,com.apple.CommCenter,com.apple.bluetoothd,com.apple.liveactivitiesd", "qcom-usb-debug=1"]
 
 [payload.adt]
 # Deliver the Data seed packed (DBRDISK1): DarwinBoot copies only the nonzero extents
