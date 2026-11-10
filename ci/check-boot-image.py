@@ -46,12 +46,26 @@ def sha(blob):
     return hashlib.sha256(blob).hexdigest()
 
 
-# Container: an Android boot image header (v0 for fastboot boot on fuxi).
-kernel_size, kernel_addr, ramdisk_size, _, second_size, _, tags, page, version, _ = struct.unpack_from('<10I', data, 8)
-check(data[:8] == b'ANDROID!' and version == spec['header_version'] and page == spec['pagesize'] and not second_size,
-      f'header v{version}, page {page}, no second stage')
-check(kernel_addr == spec['base'] + spec['kernel_offset'] and tags == spec['base'] + spec['tags_offset'],
-      f'load addresses: kernel {kernel_addr:#x}, tags {tags:#x}')
+# Container. The pinned UniXNU builder makes the qualified v0 source image;
+# fuxi CI may then rewrap that byte-identical kernel field in the owner-proven
+# Android boot-v3 envelope used by t50-auto-sb3.img.
+version = struct.unpack_from('<I', data, 40)[0]
+if version == 3:
+    kernel_size = struct.unpack_from('<I', data, 8)[0]
+    ramdisk_size = struct.unpack_from('<I', data, 12)[0]
+    header_size = struct.unpack_from('<I', data, 20)[0]
+    reserved = struct.unpack_from('<4I', data, 24)
+    page = 4096
+    check(data[:8] == b'ANDROID!' and report.get('header_version') == 3 and header_size == 1580 and not any(reserved),
+          f'header v3, header_size {header_size}, reserved zero')
+    check(report.get('source_header_version') == spec['header_version'],
+          f'v3 wrapper came from configured source header v{spec["header_version"]}')
+else:
+    kernel_size, kernel_addr, ramdisk_size, _, second_size, _, tags, page, version, _ = struct.unpack_from('<10I', data, 8)
+    check(data[:8] == b'ANDROID!' and version == spec['header_version'] and page == spec['pagesize'] and not second_size,
+          f'header v{version}, page {page}, no second stage')
+    check(kernel_addr == spec['base'] + spec['kernel_offset'] and tags == spec['base'] + spec['tags_offset'],
+          f'load addresses: kernel {kernel_addr:#x}, tags {tags:#x}')
 check(sha(data) == report['image_sha256'] and len(data) == report['image_bytes'], f'image is the one boot.json describes ({len(data)} bytes)')
 
 # Kernel: gzip(shim + firmware volume + payload) followed by the device tree.
@@ -72,7 +86,12 @@ tree = unpacker.unused_data
 fdt = (uefi / 'Platforms/Xiaomi/fuxiPkg/FdtBlob/sm8550-xiaomi-fuxi.dtb').read_bytes()
 check(tree == fdt and sha(tree) == report['dtb_sha256'], 'appended device tree is the FdtBlob')
 start = page * (1 + -(-kernel_size // page))
-check(data[start:start + ramdisk_size] == (uefi / 'Resources/ramdisk').read_bytes(), 'ramdisk is the firmware placeholder')
+if version == 3:
+    check(ramdisk_size == 1 and data[start:start + 1] == b'\0',
+          'v3 ramdisk is the one-byte successful-image placeholder')
+else:
+    check(data[start:start + ramdisk_size] == (uefi / 'Resources/ramdisk').read_bytes(),
+          'ramdisk is the firmware placeholder')
 
 # Payload: the FAT32 volume of ./unixnu build payload.
 bps, spc, reserved, fats = struct.unpack_from('<HBHB', payload, 11)

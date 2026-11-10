@@ -316,9 +316,17 @@ jobs:
         working-directory: unixnu
         run: |
           mkdir -p "$RUNNER_TEMP/image"
+          # Preserve the pinned UniXNU-generated kernel field, but use the exact
+          # Android boot-v3 envelope shape of the owner-verified t50-auto-sb3.img.
           ./unixnu bootimg --device "$GITHUB_WORKSPACE/fuxi" --uefi "$GITHUB_WORKSPACE/uefi-fuxi" --target DEBUG \
             --dtb "$GITHUB_WORKSPACE/uefi-fuxi/Platforms/Xiaomi/fuxiPkg/FdtBlob/sm8550-xiaomi-fuxi.dtb" \
-            -o "$RUNNER_TEMP/image/boot.img"
+            -o "$RUNNER_TEMP/image/boot-v0.img"
+          python3 "$GITHUB_WORKSPACE/fuxi/scripts/rewrap-fuxi-boot-v3.py" \
+            "$RUNNER_TEMP/image/boot-v0.img" "$RUNNER_TEMP/image/boot.img" \
+            --report "$RUNNER_TEMP/image/boot.json"
+          python3 "$GITHUB_WORKSPACE/fuxi/ci/check-boot-image.py" \
+            "$RUNNER_TEMP/image/boot.img" "$RUNNER_TEMP/image/boot.json" "$GITHUB_WORKSPACE/uefi-fuxi"
+          rm -f "$RUNNER_TEMP/image/boot-v0.img"
           cat "$RUNNER_TEMP/image/boot.json"
       - name: Encrypt the boot image
         run: |
