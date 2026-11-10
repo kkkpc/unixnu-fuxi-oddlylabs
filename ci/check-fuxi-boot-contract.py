@@ -44,7 +44,6 @@ def main():
         "fuxi-backlight": "dsi",
         "fuxi-touch-stage": "4",
         "fuxi-touch-hw": "7",
-        "sheng-log": "1",
         "sheng-cpufreq": "4",
         "offline-key-events": "1",
         "-apfs_shared_datavolume": None,
