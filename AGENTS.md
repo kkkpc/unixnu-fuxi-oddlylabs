@@ -1,5 +1,7 @@
 **语言 / Language：** [中文版](#中文版) | [English](#english)
 
+**交接进展 / Handoff progress：** [中文](#2026-11-10-当前交接状态) | [English](#2026-11-10-current-handoff-state) | [handoff.md](handoff.md) | [Issue #7](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/7)
+
 ## 中文版
 
 # 设备 Agent 指南
@@ -263,3 +265,30 @@ Never flash the device. Test images use fastboot boot only, and only after the o
 
 **Required iteration record.** Record the changed variable and root cause, baseline and every input hash, source revision, commands, host tests, ARM64 build/link results, image readback, device boot method, actually visible UI, log/counter semantics, last confirmed M milestone and one next blocker. Update README, AGENTS.md and porting.toml only with evidence-backed status.
 
+---
+
+## 2026-11-10 当前交接状态
+
+[English](#2026-11-10-current-handoff-state) · [handoff.md](handoff.md) · [Issue #7](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/7)
+
+1. **已知良好基线锁定为 Build #143 / `827f289e`。** 后续分支 HEAD 失败时，不得把新 HEAD 当成已验证基线。
+2. #144/#145 是无人值守迁移实验，不是完成态。#145 已知 gate：缺 `sheng-log=1` 的 host-contract 一致性，以及 `board.toml` 变更未同步 `porting.toml` configuration evidence。
+3. **任何显示/GPU/锁屏问题先查 Xiaomi 13 V2。** V2 是同机型真机成功参考；之后才查本仓库 `cpu-legacy-display`、UniXNU 上游和官方 UnixNu 文档。文档用于校验，不得替代同机成功路径对比。
+4. `cpu-legacy-display` 的 23 个独有提交逐项分类为：已等效覆盖 / 锁屏关键且缺失 / 非关键诊断或文档 / 不适用于当前 pinned 组件。只 cherry-pick 或重实现第二类；**禁止整分支 merge**。
+5. 优先审计 Legacy GOP/provider、21H461 display ABI、18 个 callback C linkage、`native_adreno_fences`、`sheng-vsync=120`、display scale/rotation、main `CADisplay` 发布链。
+6. “slot 345”在讨论与文档中优先写成人话：**显示系统询问主屏时序是否已经准备好**。不得把它描述成 GPU 渲染或“锁屏修复完成”。
+7. 每个修复循环必须记录：旧失败、V2/上游/官方依据、最小改动、提交 SHA、CI run 与结果。累计 5 个有效 push 后同步 README、AGENTS、handoff 与 Issue #7。
+8. 自动化不得执行物理设备刷写、reboot 或 fastboot。真机候选只在 Build 全绿后交给机主。
+
+## 2026-11-10 Current handoff state
+
+[中文](#2026-11-10-当前交接状态) · [handoff.md](handoff.md) · [Issue #7](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/7)
+
+1. **Pin Build #143 / `827f289e` as the known-good baseline.** A later failing HEAD must never be treated as a validated baseline.
+2. #144/#145 are unattended migration experiments, not completion states. Known #145 gates are the missing `sheng-log=1` host-contract requirement and missing matching `porting.toml` configuration evidence for the `board.toml` change.
+3. **For display/GPU/lock-screen work, inspect Xiaomi 13 V2 first.** It is the same-device, device-proven success reference. Only then inspect local `cpu-legacy-display`, upstream UniXNU and official UnixNu docs. Documentation validates the path; it must not replace the same-device comparison.
+4. Classify the 23 unique `cpu-legacy-display` commits as already-equivalent / missing lock-screen-critical / non-critical diagnostics-docs / incompatible with current pins. Cherry-pick or reimplement only the missing critical class; **never merge the branch wholesale**.
+5. Review Legacy GOP/provider, 21H461 display ABI, the 18 callback C-linkage fix, `native_adreno_fences`, `sheng-vsync=120`, display scale/rotation and main-`CADisplay` publication first.
+6. Describe “slot 345” in plain language: **the display stack asks whether primary-display timing is ready**. It is not GPU rendering and is not proof that the lock screen is fixed.
+7. Every fix loop records the previous failure, V2/upstream/official basis, minimal change, commit SHA, CI run and result. After five effective pushes, synchronize README, AGENTS, handoff and Issue #7.
+8. Automation must never flash, reboot or fastboot the physical device. Hand a candidate to the owner only after the Build is fully green.

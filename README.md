@@ -2,6 +2,8 @@
 
 **语言 / Language：** [中文版](#中文版) | [English](#english)
 
+**当前进展 / Current progress：** [中文进展](#2026-11-10-当前进展) | [English progress](#2026-11-10-current-progress) | [handoff.md](handoff.md) | [Issue #7](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/7)
+
 ## 中文版
 
 [![Build](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml/badge.svg)](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/workflows/build.yml)
@@ -410,3 +412,28 @@ The project prioritises the next verifiable boot milestone over completing every
 
 **Required iteration record.** Record the changed variable and root cause, baseline and every input hash, source revision, commands, host tests, ARM64 build/link results, image readback, device boot method, actually visible UI, log/counter semantics, last confirmed M milestone and one next blocker. Update README, AGENTS.md and porting.toml only with evidence-backed status.
 
+---
+
+## 2026-11-10 当前进展
+
+[English progress](#2026-11-10-current-progress) · [完整 handoff](handoff.md) · [Issue #7](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/7)
+
+- **最后已知全绿基线是 Build #143 / `827f289e`。** Build 与 Device documentation 均通过；加密真机候选产物为 `fuxi-boot-image-encrypted-1`。Actions：<https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/runs/42700730291>。
+- #143 已越过 Turnip iOS、Adreno Metal bridge、userspace addon、payload 与 boot image 构建。#142 的 arm64 unused `patchFramebufferBranch` 已通过把 iPadOS 27 helper 限制到 `__arm64e__` 修复，保留 `-Werror`。
+- 后续无人值守迁移 `6733bad0`（#144）和 `06fbd3c8`（#145）尚未形成新基线。#145 当前明确失败点：Host contract 要求的 `sheng-log=1` 缺失；Device documentation 要求 `board.toml` 改动同步 `porting.toml` 的 configuration finding/evidence。boot image job 因前置失败被跳过。
+- **后续参考顺序固定：Xiaomi 13 V2 同机成功实现 → 本仓库/CPU Legacy 差异 → UniXNU 上游与官方 UnixNu 文档 → 最小 CI/运行时修复。** 不再先照官方文档另起一条路线。
+- 保留 `native-ufs-root` 与 `cpu-legacy-display` 两条分支。后者有 23 个独有提交；禁止整分支 merge，只审计并选择性移植与锁屏直接相关、当前线尚缺失的显示/FBS/GPU handoff 改动。
+- “slot 345”只表示 Legacy 显示接口中的“主屏显示时序是否准备好”查询；它不是绘图功能，也不代表 GPU 已经工作。
+- 设备安全规则不变：自动化只处理 GitHub/CI；不自动刷机、不自动重启真机。新候选必须全绿后再交给机主用 `fastboot boot` 临时验证。
+
+## 2026-11-10 Current progress
+
+[中文进展](#2026-11-10-当前进展) · [Full handoff](handoff.md) · [Issue #7](https://github.com/kkkpc/unixnu-fuxi-oddlylabs/issues/7)
+
+- **The last known all-green baseline is Build #143 / `827f289e`.** Build and Device documentation both passed; the encrypted device candidate is `fuxi-boot-image-encrypted-1`. Actions: <https://github.com/kkkpc/unixnu-fuxi-oddlylabs/actions/runs/42700730291>.
+- #143 cleared the Turnip iOS, native Adreno Metal bridge, userspace addon, payload and boot-image path. The #142 arm64 unused `patchFramebufferBranch` issue was fixed by restricting the iPadOS 27 helper to `__arm64e__` while keeping `-Werror`.
+- Later unattended migration commits `6733bad0` (#144) and `06fbd3c8` (#145) are not new known-good baselines. #145 currently fails because the host contract still requires `sheng-log=1`, and the Device documentation check requires the `board.toml` change to be reflected in the matching `porting.toml` configuration finding/evidence. The boot-image job was skipped.
+- **Required reference order: proven Xiaomi 13 V2 path → local/CPU Legacy diff → upstream UniXNU and official UnixNu docs → smallest CI/runtime fix.** Do not start a fresh documentation-only route before comparing the same-device V2 success path.
+- Keep both `native-ufs-root` and `cpu-legacy-display`. The latter has 23 unique commits; do not merge it wholesale. Audit and selectively migrate only missing, lock-screen-critical display/FBS/GPU-handoff work.
+- “slot 345” is only the Legacy display query for whether primary-display timing is ready. It does not render frames and does not prove GPU functionality.
+- Automation may modify GitHub/CI only. Never flash or reboot the physical device automatically; a new device candidate must be fully green before the owner tests it with temporary `fastboot boot`.
