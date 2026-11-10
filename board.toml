@@ -151,20 +151,18 @@ trust_cache_sha256 = ["7416ca4f8377146626bb284e2133c76bee6cb4e3ee0af5d648b186235
 # Without a touch the boot ends in the root device wait.
 # native-fuxi-ufs-root=1 selects the ShengUfs root in the userdata reserve (the full OS, flashed
 # once) over the RAM-disk root; the touch probe's SYS row then reports the UFS root.
-# sheng-data-persist=2 (persistent Data phase C resume boot, 2026-11-06; the install
-# boot at f35f8863 carried sheng-data-reset=1, the only path that initialises a blank
-# store window, and left a Fresh overlay there) makes the ShengUfs driver's store
-# report mode 2, so NativeRamBlock resumes the store window at the end of userdata
-# read-write against the grown seed the payload carries: the header the install
-# boot wrote is recognised, the pages it persisted answer again, and changed pages
-# keep going to the window. The reset argument stays out - with it, every boot
-# would start the overlay over and discard the accumulated state.
+# sheng-data-persist=2 opens the NativeRamBlock persistent store read-write. Build #143
+# proved the prior 213 GiB seed/store pair invalid on-device (header mismatch followed by
+# repeated kIOReturnNotReady and APFS checksum failure). The same-device V2 path uses a
+# much smaller Data fixture. This transition image therefore carries sheng-data-reset=1
+# exactly to initialize a fresh store for the new 16 GiB seed. Remove the reset again
+# after one validated transition boot; keeping it would discard accumulated Data state.
 # The driver's log reserve default remains 1024 MiB, matching the phase-A grow
 # arithmetic.  Do not spend command-line bytes repeating that default.  The
 # payload has a hard 1000-byte command-line limit, so settled one-shot probes
 # and redundant setup/USB-control toggles stay out of the production profile.
 kernel_args = ["-v", "serial=3", "debug=0x14e", "kt_fixed_zones=120", "sheng-pmgr=2", "sheng-smp=1", "armcpu-spi-ipi=1", "armcpu-self-ipi=1",
-               "fuxi-touch-stage=4", "fuxi-touch=4", "fuxi-touch-hw=7", "fuxi-touch-hid=1", "sheng-touch-hid=1", "native-fuxi-ufs-root=1", "sheng-data-persist=2",
+               "fuxi-touch-stage=4", "fuxi-touch=4", "fuxi-touch-hw=7", "fuxi-touch-hid=1", "sheng-touch-hid=1", "native-fuxi-ufs-root=1", "sheng-data-persist=2", "sheng-data-reset=1",
                "sheng-log=1", "sheng-dpu=3", "sheng-cpufreq=4", "sheng-backlight=1", "fuxi-backlight=dsi", "sheng-disable-watchdogd=1", "offline-key-events=1",
                "-apfs_shared_datavolume", "-no_slto_panic", "offline-legacy-phase=4", "offline-legacy-register=1", "offline-legacy-gop=1", "offline-legacy-pm=1", "offline-legacy-validate=1",
                "offline-legacy-transfer=1", "offline-legacy-cpu-present=1", "offline-legacy-unit-scale=3", "offline-mobile-graphics-load=1", "offline-mobile-graphics-client=1", "offline-apfs-load=1", "sheng-gpu-power=9",

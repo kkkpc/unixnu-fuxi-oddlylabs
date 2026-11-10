@@ -124,9 +124,13 @@ jobs:
         run: |
           python3 fuxi/scripts/pack-fuxi-data-seed.py \
             "$RUNNER_TEMP/data-seed/owner-data.cdr" "$RUNNER_TEMP/data-seed/owner-data.dbr"
+      # V2 same-device evidence: a near-userdata-sized (~220 GiB) seed leaves no
+      # room for NativeRamBlock's persistent-store header/bitmap/pages and returns
+      # kIOReturnNotReady. Keep the bring-up seed at 16 GiB until the store layout
+      # is qualified; UnixNu troubleshooting likewise requires a seed that fits.
       - name: Grow the Data seed
         run: |
-          python3 fuxi/scripts/grow-fuxi-data-seed.py --gib 213 \
+          python3 fuxi/scripts/grow-fuxi-data-seed.py --gib 16 \
             "$RUNNER_TEMP/data-seed/owner-data.dbr" "$RUNNER_TEMP/data-seed/owner-data-grown.dbr"
       - name: Upload the Data seed
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
