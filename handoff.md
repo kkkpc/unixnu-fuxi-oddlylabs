@@ -136,3 +136,11 @@ It is one fixed entry in the Legacy display interface table. The system uses it 
 - Direct inspection of the owner's successful t50-auto-sb3.img shows offline-legacy-unit-scale=3 plus sheng-vsync=120. Scale 3 is frozen and vsync=120 is the only display variable added now.
 - The one-time migration reset is removed while CI pins the exact Build #146 seed artifact so persistent identity cannot drift.
 - The 23 unique cpu-legacy-display commits remain an audit source, never a wholesale merge source; b408dd56 is selected, while a4cfdac3 stays out for now.
+
+
+## 2026-11-10 t50 装载结构实验 / t50 loader-layout experiment
+
+- Build #148 (`c025a251`) is CI-green, but it only changes the **outer** Android container from v0 to v3; the inner 0x200 shim / 192 MiB / payload-inclusive ARM64 `image_size` remains unchanged.
+- Historical source audit ties the t50 structure to the `ljhhkx529/unixnu-fuxi old` + `ljhhkx529/uefi-fuxi old` lineage: v3 carrier, 176 MiB payload and pre-payload-handoff BootShim shape. The exact successful image still contains later local/config differences such as display scale 3.
+- New local-only tool: `scripts/make-t50-shell-candidate.py`. It preserves the proven t50 header/BootShim/UEFI/DTB and substitutes only the FAT payload from the current candidate, with SHA-256/invariant reporting.
+- This is the next device discriminator. No Data/GPU changes are allowed in the same experiment, and no automation may invoke fastboot or flash.

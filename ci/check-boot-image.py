@@ -4,8 +4,9 @@
 usage: python3 ci/check-boot-image.py <boot.img> <boot.json> <uefi-fuxi checkout> [--fd-out FILE]
 
 The expected values come from this repository's board.toml ([bootimg], [payload]) and the firmware checkout's device
-config: the container header and load addresses, the shim's ARM64 header (text offset, an image size that covers the
-payload), the firmware volume and the payload after it, the appended FdtBlob and the placeholder ramdisk. It then lists
+config: the container header and load addresses, the shim's ARM64 header, the firmware volume and the payload after
+it, the appended FdtBlob and the placeholder ramdisk. The current CI source image intentionally uses a payload-inclusive
+ARM64 image_size; the device-proven t50 fallback instead keeps image_size at BootShim+FD and is built by a separate tool. It then lists
 the payload's FAT32 files, checks that the kernel carries the touch probe, prints the ADT root and /chosen values and
 compares the boot menu's arguments with [payload] kernel_args. Exits non-zero on any mismatch. Nothing is written,
 except with --fd-out: then the image's firmware volume goes to FILE once every check passed, so payload variants
@@ -77,8 +78,14 @@ check(unpacker.eof, 'gzip stream complete')
 shim = report['shim_bytes']
 text_offset, image_size = struct.unpack_from('<QQ', image, 8)
 check(image[56:60] == b'ARM\x64' and text_offset == spec['text_offset'], f'ARM64 header, text offset {text_offset:#x}')
-check(image_size == len(image) == shim + fd_size + report['payload_bytes'],
-      f'image size {image_size:#x} = shim {shim:#x} + firmware {fd_size:#x} + payload {report["payload_bytes"]:#x}')
+expected_full_size = shim + fd_size + report['payload_bytes']
+t50_loader_size = shim + fd_size
+contract = ('payload-inclusive' if image_size == len(image) == expected_full_size else
+            'loader-only/t50-style' if image_size == t50_loader_size and len(image) == expected_full_size else
+            'other')
+print(f'     inner ARM64 contract: {contract}; image_size={image_size:#x}, decompressed={len(image):#x}')
+check(image_size == len(image) == expected_full_size,
+      f'current CI contract: image size {image_size:#x} = shim {shim:#x} + firmware {fd_size:#x} + payload {report["payload_bytes"]:#x}')
 fd = image[shim:shim + fd_size]
 check(sha(fd) == report['fd_sha256'] and fd[0x28:0x2c] == b'_FVH', 'firmware volume is the built FD')
 payload = image[shim + fd_size:]

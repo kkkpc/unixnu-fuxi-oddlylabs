@@ -312,3 +312,12 @@ Never flash the device. Test images use fastboot boot only, and only after the o
 - Direct inspection of the owner's successful t50-auto-sb3.img shows offline-legacy-unit-scale=3 plus sheng-vsync=120. Scale 3 is frozen and vsync=120 is the only display variable added now.
 - The one-time migration reset is removed while CI pins the exact Build #146 seed artifact so persistent identity cannot drift.
 - The 23 unique cpu-legacy-display commits remain an audit source, never a wholesale merge source; b408dd56 is selected, while a4cfdac3 stays out for now.
+
+
+## t50 loader-shell rule / t50 装载壳规则（2026-11-10）
+
+- Do not describe `rewrap-fuxi-boot-v3.py` as a full t50 reproduction. It changes only the outer Android envelope.
+- The device-proven discriminator is `scripts/make-t50-shell-candidate.py`: preserve the exact t50 v3 header shape, BootShim, 3 MiB UEFI FD and DTB; replace only the current FAT payload.
+- The reference must prove the t50 inner contract before output: ARM64 magic present and `image_size == BootShim + FD`.
+- Freeze 16 GiB Data, `offline-legacy-unit-scale=3`, `sheng-vsync=120` and the current GPU path during this loader experiment.
+- Automation must not call fastboot, flash, reboot, or alter a physical device.

@@ -457,3 +457,20 @@ The project prioritises the next verifiable boot milestone over completing every
 - Direct inspection of the owner's successful t50-auto-sb3.img shows offline-legacy-unit-scale=3 plus sheng-vsync=120. Scale 3 is frozen and vsync=120 is the only display variable added now.
 - The one-time migration reset is removed while CI pins the exact Build #146 seed artifact so persistent identity cannot drift.
 - The 23 unique cpu-legacy-display commits remain an audit source, never a wholesale merge source; b408dd56 is selected, while a4cfdac3 stays out for now.
+
+
+## 2026-11-10 t50 loader-shell fallback / t50 装载壳回退
+
+Build #148 proves only that the current kernel field can be placed in an Android-v3 outer envelope. It does **not** reproduce the device-proven t50 inner layout: t50 uses an approximately 0xC0 BootShim, a 3 MiB UEFI FD, a 176 MiB payload, and an ARM64 `image_size` that stops at BootShim+FD. The current generated image still uses a 0x200 shim and a payload-inclusive inner `image_size`.
+
+For the next device discriminator, keep Data at 16 GiB, keep GPU/display settings unchanged, and preserve the known-good t50 loader shell exactly while replacing only the current FAT payload:
+
+```sh
+python3 scripts/make-t50-shell-candidate.py \
+  ~/Downloads/t50-auto-sb3.img \
+  ~/Downloads/boot148.img \
+  ~/Downloads/boot148-t50shell.img \
+  --report ~/Downloads/boot148-t50shell.json
+```
+
+The tool never invokes fastboot, never flashes, and never reboots the phone. Device testing remains owner-only with temporary `fastboot boot`.

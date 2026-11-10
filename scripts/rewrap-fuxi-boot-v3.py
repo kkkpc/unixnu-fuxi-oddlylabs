@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Rewrap a fuxi UniXNU Android boot-v0 image as the device-proven boot-v3 envelope.
+"""Rewrap a fuxi UniXNU Android boot-v0 image in a boot-v3 outer envelope.
 
 The kernel field is copied byte-for-byte. Only the outer Android boot header and
-one-byte ramdisk placeholder change. This matches the owner-verified
-t50-auto-sb3.img layout: 4096-byte header page, boot header v3, header_size 1580,
-zero cmdline/reserved fields, and a one-byte zero ramdisk.
+one-byte ramdisk placeholder change. This reproduces the outer v3 envelope used
+by the owner-verified t50-auto-sb3.img, but deliberately does NOT reproduce
+t50's inner BootShim/UEFI/image_size contract. Use make-t50-shell-candidate.py
+for the exact-loader-shell fallback.
 
 Usage:
   rewrap-fuxi-boot-v3.py INPUT_V0 OUTPUT_V3 [--report boot.json]
@@ -91,8 +92,9 @@ if args.report:
     report["ramdisk_bytes"] = 1
     report["image_sha256"] = sha256(out)
     report["image_bytes"] = len(out)
-    report["wrapper"] = "android-v3-t50-shape"
+    report["wrapper"] = "android-v3-envelope-only"
     report["wrapper_kernel_preserved"] = True
+    report["t50_inner_contract_preserved"] = False
     args.report.write_text(json.dumps(report, indent=2) + "\n")
 
 print(json.dumps({
