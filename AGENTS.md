@@ -292,3 +292,23 @@ Never flash the device. Test images use fastboot boot only, and only after the o
 6. Describe “slot 345” in plain language: **the display stack asks whether primary-display timing is ready**. It is not GPU rendering and is not proof that the lock screen is fixed.
 7. Every fix loop records the previous failure, V2/upstream/official basis, minimal change, commit SHA, CI run and result. After five effective pushes, synchronize README, AGENTS, handoff and Issue #7.
 8. Automation must never flash, reboot or fastboot the physical device. Hand a candidate to the owner only after the Build is fully green.
+
+
+## 2026-11-10 五次 Push 检查点 / 5-Push Checkpoint
+
+- 基线：827f289e。此前四个有效提交：6733bad0、06fbd3c8、a132feb0、51f050ca；本提交为第 5 次。
+- Build #146 真机已证明 16 GiB Data 路线正确：OwnerData 正常挂载，persistent 写入持续增长且 er=0，#143 的 device-not-ready/APFS corruption 消失。
+- #146 当前阻塞收敛到显示提交链：GPU fence 9/9 retire、CP 无 fault，但 frames=0、gop offers=0，gop_wait 持续超时。
+- 直接解析机主提供的成功 t50-auto-sb3.img：实际 unixnu.toml 使用 offline-legacy-unit-scale=3 与 sheng-vsync=120。因此冻结 scale=3；本轮只引入 vsync=120。
+- Persistent 迁移已完成：下一镜像删除一次性的 sheng-data-reset=1，并固定复用 Build #146 / run 42744943462 / artifact 13731556139 的同一份 16 GiB seed，禁止 CI 重新生成 seed 破坏 identity。
+- cpu-legacy-display 的 23 个独有提交继续作为审计源而非整体 merge 源；b408dd56 的 vsync=120 是本轮选中的显示变量，a4cfdac3 的 scale/rotation 暂不移植。
+- 安全边界不变：CI 不刷机、不重启真机、不执行 fastboot；QUD reboot 继续编译为 0。
+
+### English
+
+- Baseline: 827f289e. The prior four effective commits are 6733bad0, 06fbd3c8, a132feb0 and 51f050ca; this is push 5.
+- The #146 device boot validates the 16 GiB Data path: OwnerData mounts, persistent writes grow with er=0, and the old device-not-ready/APFS-corruption signatures are gone.
+- The remaining blocker is display presentation: GPU fences retire 9/9 with no CP fault, while frames=0, GOP offers=0 and GOP waits keep timing out.
+- Direct inspection of the owner's successful t50-auto-sb3.img shows offline-legacy-unit-scale=3 plus sheng-vsync=120. Scale 3 is frozen and vsync=120 is the only display variable added now.
+- The one-time migration reset is removed while CI pins the exact Build #146 seed artifact so persistent identity cannot drift.
+- The 23 unique cpu-legacy-display commits remain an audit source, never a wholesale merge source; b408dd56 is selected, while a4cfdac3 stays out for now.

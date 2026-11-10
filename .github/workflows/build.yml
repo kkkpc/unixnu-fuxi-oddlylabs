@@ -23,6 +23,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: build-${{ github.ref }}
@@ -284,16 +285,17 @@ jobs:
           python3 "$GITHUB_WORKSPACE/fuxi/scripts/check-fuxi-gpu-payload.py" \
             --addon "$GITHUB_WORKSPACE/fuxi/build/gpuaddon.bin" \
             --owner-trust "$tree/build/adreno-metal-plugin/owner-trust.bundle"
-      # The seed comes from the data-seed job: it is formatted on macOS 15 (the macOS 14 hosted
-      # images were retired on 2026-11-02, before that job ever ran) and packed there into the
-      # DBRDISK1 extent form. The dense form does not boot on this unit: chain47/48/49 and the
-      # disc1 discriminator all stayed pure black with the 256 MiB seed in the payload, while
-      # chain50 with the packed seed booted normally (2026-11-06); see porting.toml (storage).
-      - name: Fetch the Data seed
+      # Build #146 completed the one-time 16 GiB persistent-Data migration on the phone.
+      # Resume requires byte-identical seed identity, so this candidate reuses the exact
+      # #146 seed artifact instead of the freshly regenerated seed from this workflow run.
+      - name: Fetch the Build #146 Data seed (resume identity)
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          name: fuxi-data-seed-${{ github.run_attempt }}
+          artifact-ids: 13731556139
           path: fuxi/build/data-seed
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 42744943462
       - name: Build payload
         working-directory: unixnu
         run: |

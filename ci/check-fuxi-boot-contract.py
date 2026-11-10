@@ -39,6 +39,7 @@ def main():
     required = {
         "native-fuxi-ufs-root": "1",
         "offline-legacy-unit-scale": "3",
+        "sheng-vsync": "120",
         "sheng-dpu": "3",
         "sheng-backlight": "1",
         "fuxi-backlight": "dsi",
